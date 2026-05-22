@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import NextLink from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Logo } from '@/components/brand/logo';
 import { Container } from '@/components/layout/container';
@@ -45,7 +46,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
                   {t('tryAgain')}
                 </Button>
                 <Button variant="ghost" size="lg" asChild>
-                  <a href="/">{t('goHome')}</a>
+                  <NextLink href="/">{t('goHome')}</NextLink>
                 </Button>
               </div>
             </div>

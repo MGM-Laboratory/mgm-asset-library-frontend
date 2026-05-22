@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 
 export function useIntersection<T extends Element>(
   options: IntersectionObserverInit = { rootMargin: '200px' },
-): { ref: RefObject<T | null>; isIntersecting: boolean } {
+): { ref: RefObject<T>; isIntersecting: boolean } {
   const ref = useRef<T | null>(null);
   const [isIntersecting, setIntersecting] = useState(false);
 
@@ -20,5 +20,5 @@ export function useIntersection<T extends Element>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { ref, isIntersecting };
+  return { ref: ref as RefObject<T>, isIntersecting };
 }

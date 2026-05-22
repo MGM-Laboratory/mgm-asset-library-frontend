@@ -6,7 +6,6 @@ import { Plus, X } from 'lucide-react';
 import { useAuthedFetch } from '@/lib/api/client';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { queryKeys } from '@/lib/api/queries';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import type { Tag } from '@/lib/api/types';
 import { cn } from '@/lib/utils';

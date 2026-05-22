@@ -1,3 +1,4 @@
+import NextLink from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { Logo } from '@/components/brand/logo';
 import { Container } from '@/components/layout/container';
@@ -29,7 +30,7 @@ export default async function NotFound() {
               <p className="text-body-lg text-ink-2 mt-4 max-w-prose">{t('body')}</p>
               <div className="mt-8 flex flex-wrap items-center gap-2">
                 <Button size="lg" asChild>
-                  <a href="/">{t('goHome')}</a>
+                  <NextLink href="/">{t('goHome')}</NextLink>
                 </Button>
                 <Button size="lg" variant="ghost" asChild>
                   <a href="/search">{t('searchAssets')}</a>

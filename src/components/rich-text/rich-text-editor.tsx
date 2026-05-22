@@ -43,7 +43,7 @@ import { Input, Field } from '@/components/ui/input';
 import { TipTapRenderer } from './tiptap-renderer';
 import { uploadEditorMedia } from './editor-media-upload';
 import { toast } from '@/components/ui/toaster';
-import type { TipTapDoc } from '@/lib/api/types';
+import type { TipTapDoc, TipTapNode } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
 
 export type RichTextMode = 'full' | 'lite';
@@ -130,7 +130,6 @@ export function RichTextEditor({
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
-  const [imageOpen, setImageOpen] = useState(false);
   const [embedOpen, setEmbedOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [busyUploading, setBusyUploading] = useState(false);
@@ -152,7 +151,7 @@ export function RichTextEditor({
           'prose-headings:font-display',
         ),
       },
-      handlePaste(view, event) {
+      handlePaste(_view, event) {
         const items = event.clipboardData?.items;
         if (!items) return false;
         for (const it of Array.from(items)) {
@@ -167,7 +166,7 @@ export function RichTextEditor({
         }
         return false;
       },
-      handleDrop(view, event) {
+      handleDrop(_view, event) {
         const files = (event as DragEvent).dataTransfer?.files;
         if (files && files.length > 0) {
           for (const file of Array.from(files)) {
@@ -192,7 +191,7 @@ export function RichTextEditor({
     if (!editor || !value) return;
     const current = JSON.stringify(editor.getJSON());
     const next = JSON.stringify(value);
-    if (current !== next) editor.commands.setContent(value, { emitUpdate: false });
+    if (current !== next) editor.commands.setContent(value, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
 
@@ -636,19 +635,17 @@ export function stripDisallowedLiteNodes(doc: TipTapDoc): TipTapDoc {
   };
 }
 
-function filterLiteNode(
-  node: TipTapDoc['content'] extends (infer N)[] ? N : never,
-): TipTapDoc['content'] extends (infer N)[] ? N | null : never {
-  if (!LITE_ALLOWED_NODES.has(node.type)) return null as never;
+function filterLiteNode(node: TipTapNode): TipTapNode | null {
+  if (!LITE_ALLOWED_NODES.has(node.type)) return null;
   const marks = node.marks?.filter((m) => LITE_ALLOWED_MARKS.has(m.type));
   const content = node.content
     ?.map(filterLiteNode)
-    .filter((n): n is NonNullable<typeof n> => n !== null);
+    .filter((n): n is TipTapNode => n !== null);
   return {
     ...node,
     marks: marks?.length ? marks : undefined,
     content: content?.length ? content : node.content ? [] : undefined,
-  } as never;
+  };
 }
 
 // Silence unused — only re-exported for tests

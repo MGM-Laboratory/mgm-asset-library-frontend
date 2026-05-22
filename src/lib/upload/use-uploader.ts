@@ -9,7 +9,6 @@ import type {
   InitiateUploadResponse,
   MultipartPart,
   UploadTask,
-  UploadTaskInput,
 } from './types';
 
 const SINGLE_SHOT_CAP = 100 * 1024 * 1024; // 100 MB
