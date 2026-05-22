@@ -3,7 +3,8 @@ name: CI
 on:
   workflow_call: 
 
-permissions: read
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -34,7 +35,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: latest
+          node-version: 20
           
       - name: Install
         run: pnpm install --frozen-lockfile
