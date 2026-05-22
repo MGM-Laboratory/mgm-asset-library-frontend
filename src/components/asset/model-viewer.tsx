@@ -116,7 +116,6 @@ export function ModelViewerPanel({ src, alt, className, animations = [] }: Model
         </div>
       ) : null}
 
-      {/* @ts-expect-error custom element */}
       <model-viewer
         ref={ref}
         src={src}

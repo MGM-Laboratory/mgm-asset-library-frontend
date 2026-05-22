@@ -1,4 +1,4 @@
-import { test, expect, withStorageState, ROUTES } from './helpers/fixtures';
+import { test, expect, ROUTES } from './helpers/fixtures';
 
 test.describe('comment edit + admin delete', () => {
   test('author can edit own comment', async ({ browser }) => {

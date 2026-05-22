@@ -24,8 +24,8 @@ describe('CompatibilityTable', () => {
     );
     expect(screen.getByText('6000.0.2f1')).toBeInTheDocument();
     expect(screen.getByText('6000.1.14f1')).toBeInTheDocument();
-    expect(screen.getByText('URP')).toBeInTheDocument();
-    expect(screen.getByText('HDRP')).toBeInTheDocument();
+    expect(screen.getByText(/renderPipeline\.URP|URP/)).toBeInTheDocument();
+    expect(screen.getByText(/renderPipeline\.HDRP|HDRP/)).toBeInTheDocument();
     // 'iOS' label comes from the search.target.IOS translation; under the
     // next-intl stub that key is returned verbatim.
     expect(screen.getByText(/target\.IOS|iOS/)).toBeInTheDocument();

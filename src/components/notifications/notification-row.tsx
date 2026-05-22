@@ -18,7 +18,7 @@ export function NotificationRow({ item, onActivate, dense }: Props) {
   const locale = useLocale() as LocaleCode;
   const href = notificationLink(item.type, item.payload);
   const message = renderMessage(item.type, item.payload, (key, vars) =>
-    t(key as 'COMMENT_CREATED', vars),
+    t(key as 'COMMENT_CREATED', vars as Record<string, string | number | Date> | undefined),
   );
   const isUnread = !item.readAt;
   return (

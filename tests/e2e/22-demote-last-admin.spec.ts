@@ -1,4 +1,4 @@
-import { test, expect, withStorageState, ROUTES } from './helpers/fixtures';
+import { test, withStorageState, ROUTES } from './helpers/fixtures';
 
 test.use(withStorageState('admin'));
 

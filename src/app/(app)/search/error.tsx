@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import NextLink from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Container } from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
@@ -31,7 +32,7 @@ export default function SearchErrorPage({
         <div className="mt-6 flex items-center gap-2">
           <Button onClick={() => reset()}>{t('tryAgain')}</Button>
           <Button variant="ghost" asChild>
-            <a href="/">{t('goHome')}</a>
+            <NextLink href="/">{t('goHome')}</NextLink>
           </Button>
         </div>
       </div>

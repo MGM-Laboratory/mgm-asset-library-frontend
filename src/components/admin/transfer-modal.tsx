@@ -122,7 +122,7 @@ export function AdminTransferModal({ asset, onOpenChange, onDone }: Props) {
                     ? avatarFromServer(picked.avatar)
                     : { initials: picked.displayName.slice(0, 2).toUpperCase(), bgColor: '#3a6dc5', fgColor: '#fff' }
                 }
-                size={28}
+                size={32}
               />
               <span className="text-[14px] font-semibold text-ink">{picked.displayName}</span>
               <span className="text-caption text-ink-3 font-mono">{picked.email}</span>
