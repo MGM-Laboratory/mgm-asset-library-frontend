@@ -1,0 +1,167 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Plus, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Field, Input } from '@/components/ui/input';
+import { Alert } from '@/components/ui/alert';
+import { ChipFilter } from '@/components/filters/filter-section';
+import { useAuthedFetch } from '@/lib/api/client';
+import { useWizard } from '../wizard-context';
+import type { CompatibilityRow, RenderPipeline, TargetPlatform } from '@/lib/api/types';
+import { logger } from '@/lib/logger';
+
+const RENDER_PIPELINES: RenderPipeline[] = ['URP', 'HDRP', 'SRP', 'BUILT_IN'];
+const TARGETS: TargetPlatform[] = [
+  'WINDOWS',
+  'MAC',
+  'LINUX',
+  'IOS',
+  'ANDROID',
+  'CONSOLE',
+  'WEB',
+  'VR',
+];
+
+const UNITY_SUGGESTED = ['6000.1.14f1', '6000.0.2f1', '2022.3.50f1', '2021.3.45f1'];
+const UNREAL_SUGGESTED = ['5.0', '5.1', '5.2', '5.3', '5.4', '5.5'];
+
+export function StepCompatibility() {
+  const wiz = useWizard();
+  const t = useTranslations('publish.compatibility');
+  const tSearch = useTranslations('search');
+  const fetcher = useAuthedFetch();
+  const [rows, setRows] = useState<CompatibilityRow[]>(
+    wiz.latestVersion?.compatibility ?? [],
+  );
+
+  // Keep local state in sync if the server payload changes (e.g. after refetch).
+  useEffect(() => {
+    if (wiz.latestVersion?.compatibility) setRows(wiz.latestVersion.compatibility);
+  }, [wiz.latestVersion?.compatibility]);
+
+  if (wiz.asset.engine === 'ENGINE_AGNOSTIC') {
+    return <Alert variant="neutral">{t('agnostic')}</Alert>;
+  }
+  if (!wiz.latestVersion) {
+    return <Alert variant="warning">Create a version first via Basics.</Alert>;
+  }
+
+  const persist = async (next: CompatibilityRow[]) => {
+    setRows(next);
+    try {
+      await fetcher(`/assets/${wiz.asset.id}/versions/${wiz.latestVersion!.id}/compatibility`, {
+        method: 'POST',
+        body: { rows: next },
+      });
+      await wiz.refresh();
+    } catch (err) {
+      logger.warn('compatibility.save-failed', {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+
+  const suggested = wiz.asset.engine === 'UNITY' ? UNITY_SUGGESTED : UNREAL_SUGGESTED;
+
+  return (
+    <div className="space-y-4 max-w-[820px]">
+      <div>
+        <h2 className="font-display text-h2 text-ink tracking-[-0.01em] mb-1">{t('title')}</h2>
+      </div>
+
+      {rows.length === 0 ? (
+        <Alert variant="neutral">{t('noRows')}</Alert>
+      ) : (
+        <ul className="space-y-3">
+          {rows.map((row, idx) => (
+            <li key={idx} className="rounded-[14px] border border-line p-4 bg-surface">
+              <div className="flex flex-wrap gap-4">
+                <Field id={`ev-${idx}`} label={t('engineVersion')} className="flex-1 min-w-[200px]">
+                  <Input
+                    id={`ev-${idx}`}
+                    list={`engine-${wiz.asset.engine}`}
+                    value={row.engineVersion}
+                    onChange={(e) => {
+                      const next = rows.map((r, i) =>
+                        i === idx ? { ...r, engineVersion: e.target.value } : r,
+                      );
+                      setRows(next);
+                    }}
+                    onBlur={() => persist(rows)}
+                  />
+                  <datalist id={`engine-${wiz.asset.engine}`}>
+                    {suggested.map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
+                </Field>
+
+                {wiz.asset.engine === 'UNITY' ? (
+                  <Field label={t('renderPipelines')} className="flex-[1.6] min-w-[260px]">
+                    <ChipFilter
+                      options={RENDER_PIPELINES.map((rp) => ({
+                        label: tSearch(`renderPipeline.${rp}`),
+                        value: rp,
+                      }))}
+                      values={row.renderPipelines}
+                      onChange={(next) => {
+                        const updated = rows.map((r, i) =>
+                          i === idx ? { ...r, renderPipelines: next as RenderPipeline[] } : r,
+                        );
+                        void persist(updated);
+                      }}
+                    />
+                  </Field>
+                ) : null}
+
+                <Field label={t('targets')} className="flex-[2] min-w-[320px]">
+                  <ChipFilter
+                    options={TARGETS.map((tg) => ({
+                      label: tSearch(`target.${tg}`),
+                      value: tg,
+                    }))}
+                    values={row.targets}
+                    onChange={(next) => {
+                      const updated = rows.map((r, i) =>
+                        i === idx ? { ...r, targets: next as TargetPlatform[] } : r,
+                      );
+                      void persist(updated);
+                    }}
+                  />
+                </Field>
+
+                <button
+                  type="button"
+                  aria-label={t('removeRow')}
+                  onClick={() => void persist(rows.filter((_, i) => i !== idx))}
+                  className="self-start inline-flex h-9 w-9 items-center justify-center rounded-[8px] text-ink-2 hover:bg-surface-muted hover:text-ink transition-colors"
+                >
+                  <X className="h-4 w-4" strokeWidth={2.25} />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Button
+        variant="secondary"
+        leadingIcon={<Plus className="h-4 w-4" strokeWidth={2.25} />}
+        onClick={() =>
+          void persist([
+            ...rows,
+            {
+              engineVersion: suggested[0] ?? '',
+              renderPipelines: wiz.asset.engine === 'UNITY' ? ['URP'] : [],
+              targets: ['WINDOWS'],
+            },
+          ])
+        }
+      >
+        {t('addRow')}
+      </Button>
+    </div>
+  );
+}

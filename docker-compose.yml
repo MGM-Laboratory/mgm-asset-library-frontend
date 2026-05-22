@@ -1,0 +1,18 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mgm-asset-library-frontend:local
+    container_name: mgm-asset-library-web
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env.local
+    networks:
+      - mgm-asset-library
+
+networks:
+  mgm-asset-library:
+    external: true
