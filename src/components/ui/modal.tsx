@@ -53,7 +53,7 @@ export const ModalContent = forwardRef<
         sizeMap[size],
         'bg-surface rounded-[28px] shadow-3 border border-line',
         'p-7',
-        'data-[state=open]:animate-scale-in',
+        'data-[state=open]:animate-scale-in-center',
         'focus-visible:outline-none',
         'max-h-[calc(100dvh-2rem)] overflow-y-auto',
         className,
