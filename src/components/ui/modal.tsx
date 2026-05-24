@@ -48,12 +48,12 @@ export const ModalContent = forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
+        'mgm-modal-content',
         'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2',
         'w-[calc(100%-2rem)]',
         sizeMap[size],
         'bg-surface rounded-[28px] shadow-3 border border-line',
         'p-7',
-        'data-[state=open]:animate-scale-in-center',
         'focus-visible:outline-none',
         'max-h-[calc(100dvh-2rem)] overflow-y-auto',
         className,
