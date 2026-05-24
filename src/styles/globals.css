@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Modal/dialog entrance animation. Radix Dialog content is centered with
+   `-translate-x-1/2 -translate-y-1/2`; a plain scale animation overrides that
+   `transform` (and `forwards` retains it) which shifts the dialog off-center.
+   Keep the translate inside the keyframe so it stays centered while scaling.
+   Defined as raw CSS (not a Tailwind utility) so it is always in the bundle. */
+@keyframes mgm-modal-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+.mgm-modal-content[data-state='open'] {
+  animation: mgm-modal-in 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
 /* =========================================================================
    Design tokens — DS §2.1 + §6.1
    ========================================================================= */
