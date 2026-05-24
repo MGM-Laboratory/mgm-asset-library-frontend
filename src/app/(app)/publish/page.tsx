@@ -1,7 +1,6 @@
 import NextLink from 'next/link';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Container } from '@/components/layout/container';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
 import { AssetCard } from '@/components/asset/asset-card';
 import { Card } from '@/components/ui/card';

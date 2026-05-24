@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
+import NextLink from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { LayoutGrid, List } from 'lucide-react';
 import { AssetCard } from '@/components/asset/asset-card';
@@ -193,7 +194,7 @@ export function LibraryGrid() {
               </Button>
             ) : (
               <Button asChild>
-                <a href="/">{t('browseAssets')}</a>
+                <NextLink href="/">{t('browseAssets')}</NextLink>
               </Button>
             )
           }

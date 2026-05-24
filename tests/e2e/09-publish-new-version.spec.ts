@@ -1,4 +1,4 @@
-import { test, expect, withStorageState } from './helpers/fixtures';
+import { test, withStorageState } from './helpers/fixtures';
 
 test.use(withStorageState('contributor'));
 

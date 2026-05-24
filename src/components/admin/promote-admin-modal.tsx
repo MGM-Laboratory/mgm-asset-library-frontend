@@ -86,7 +86,7 @@ export function PromoteAdminModal({ onOpenChange, onDone }: Props) {
                               ? avatarFromServer(u.avatar)
                               : getAvatarTokens({ id: u.id, displayName: u.displayName, email: u.email })
                           }
-                          size={28}
+                          size={32}
                         />
                         <span className="block">
                           <span className="text-[13.5px] font-medium text-ink">{u.displayName}</span>

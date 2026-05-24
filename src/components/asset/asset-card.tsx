@@ -5,7 +5,7 @@ import { EngineLogo } from './engine-logo';
 import { SaveButton } from './save-button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { AssetSummary, Engine } from '@/lib/api/types';
+import type { AssetSummary } from '@/lib/api/types';
 
 interface BaseProps {
   asset: AssetSummary;

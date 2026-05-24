@@ -220,9 +220,15 @@ export function CommentsSection({ asset, me }: CommentsSectionProps) {
                   onReply={(parentId, body) =>
                     submitMutation.mutateAsync({ kind: 'COMMENT', parentId, body })
                   }
-                  onEdit={(id, body) => editMutation.mutateAsync({ id, body })}
-                  onDelete={(id) => deleteMutation.mutateAsync(id)}
-                  onStatus={(id, status) => statusMutation.mutateAsync({ id, status })}
+                  onEdit={async (id, body) => {
+                    await editMutation.mutateAsync({ id, body });
+                  }}
+                  onDelete={async (id) => {
+                    await deleteMutation.mutateAsync(id);
+                  }}
+                  onStatus={async (id, status) => {
+                    await statusMutation.mutateAsync({ id, status });
+                  }}
                 />
               </li>
             ))}

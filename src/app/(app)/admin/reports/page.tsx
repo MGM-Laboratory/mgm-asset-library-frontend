@@ -1,7 +1,7 @@
 'use client';
 
 import NextLink from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { DataTable } from '@/components/admin/data-table';

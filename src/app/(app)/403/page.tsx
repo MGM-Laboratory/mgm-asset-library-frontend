@@ -1,3 +1,4 @@
+import NextLink from 'next/link';
 import { Logo } from '@/components/brand/logo';
 import { Container } from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,7 @@ export default function ForbiddenPage() {
               </p>
               <div className="mt-7 flex items-center gap-2">
                 <Button size="lg" asChild>
-                  <a href="/">Go to Discover</a>
+                  <NextLink href="/">Go to Discover</NextLink>
                 </Button>
               </div>
             </div>

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 import { AdminPageHeader } from '@/components/admin/admin-page-header';
-import { DataTable } from '@/components/admin/data-table';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import { useAuthedFetch } from '@/lib/api/client';

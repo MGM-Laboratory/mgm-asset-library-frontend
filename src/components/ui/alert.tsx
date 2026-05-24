@@ -24,7 +24,9 @@ const iconFor = {
   neutral: <Info className="h-5 w-5 text-ink-3" strokeWidth={2.25} />,
 };
 
-export interface AlertProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof alertStyles> {
+export interface AlertProps
+  extends Omit<HTMLAttributes<HTMLDivElement>, 'title'>,
+    VariantProps<typeof alertStyles> {
   title?: ReactNode;
   icon?: ReactNode | false;
   action?: ReactNode;

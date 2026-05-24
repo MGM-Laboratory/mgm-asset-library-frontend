@@ -169,9 +169,7 @@ export interface AdminReportPage {
   pageInfo: PageInfo;
 }
 
-export interface AdminAssetRequest extends AssetRequest {
-  // Mirror, with required adminComment context.
-}
+export type AdminAssetRequest = AssetRequest;
 
 export interface AdminAssetRequestPage {
   items: AdminAssetRequest[];

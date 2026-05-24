@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import NextLink from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Container } from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,7 @@ export default function AssetErrorPage({
               {t('tryAgain')}
             </Button>
             <Button size="lg" variant="ghost" asChild>
-              <a href="/">{t('goToDiscover')}</a>
+              <NextLink href="/">{t('goToDiscover')}</NextLink>
             </Button>
           </div>
         </div>

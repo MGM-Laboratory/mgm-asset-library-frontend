@@ -8,7 +8,6 @@ import { useTranslations } from 'next-intl';
 import { ThumbnailImage } from './thumbnail-image';
 import {
   Modal,
-  ModalContent,
   ModalPortal,
   ModalOverlay,
 } from '@/components/ui/modal';
@@ -52,7 +51,7 @@ export function classifyFiles(
   files: { id: string; relativePath: string; kind: string; meta?: Record<string, unknown> | null }[],
 ): MediaItem[] {
   return files
-    .map((f) => {
+    .map((f): MediaItem | null => {
       const kind = classifyKind(f.kind);
       if (!kind) return null;
       const meta = (f.meta ?? {}) as Record<string, unknown>;
@@ -71,7 +70,7 @@ export function classifyFiles(
         thumb: thumbUrl,
         label: f.relativePath.split('/').pop() ?? f.relativePath,
         meta: animations ? { animations } : undefined,
-      } satisfies MediaItem;
+      };
     })
     .filter((m): m is MediaItem => m !== null);
 }
