@@ -96,14 +96,25 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(buttonStyles({ variant, size: resolvedSize, fullWidth }), className)}
         {...props}
       >
-        {loading ? (
-          <Spinner size={size === 'sm' ? 14 : 16} className="text-current" />
+        {asChild ? (
+          // Radix Slot requires exactly ONE child element and merges the
+          // button's props/classes onto it. Pass the caller's element straight
+          // through; wrapping it or injecting icon siblings would hand Slot an
+          // array and throw "React.Children.only expected a single child",
+          // which 500'd every page rendering a <Button asChild>.
+          children
         ) : (
-          leadingIcon
+          <>
+            {loading ? (
+              <Spinner size={size === 'sm' ? 14 : 16} className="text-current" />
+            ) : (
+              leadingIcon
+            )}
+            {!iconOnly ? <span className="inline-flex items-center">{children}</span> : null}
+            {iconOnly && !loading ? children : null}
+            {!loading && trailingIcon ? trailingIcon : null}
+          </>
         )}
-        {!iconOnly ? <span className="inline-flex items-center">{children}</span> : null}
-        {iconOnly && !loading ? children : null}
-        {!loading && trailingIcon ? trailingIcon : null}
       </Comp>
     );
   },
