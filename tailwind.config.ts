@@ -88,13 +88,6 @@ const config: Config = {
           from: { opacity: '0', transform: 'scale(0.96)' },
           to: { opacity: '1', transform: 'scale(1)' },
         },
-        // For elements centered via -translate-x/y-1/2 (e.g. Dialog content):
-        // the transform must keep the translate, otherwise the animation's
-        // `forwards` fill leaves only scale() and the element shifts off-center.
-        'scale-in-center': {
-          from: { opacity: '0', transform: 'translate(-50%, -50%) scale(0.96)' },
-          to: { opacity: '1', transform: 'translate(-50%, -50%) scale(1)' },
-        },
         'slide-up': {
           from: { opacity: '0', transform: 'translateY(8px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
@@ -108,7 +101,6 @@ const config: Config = {
       animation: {
         'fade-in': 'fade-in 200ms cubic-bezier(0.22, 1, 0.36, 1) forwards',
         'scale-in': 'scale-in 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-        'scale-in-center': 'scale-in-center 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
         'slide-up': 'slide-up 320ms cubic-bezier(0.22, 1, 0.36, 1) forwards',
         shimmer: 'shimmer 1.6s linear infinite',
       },
