@@ -32,5 +32,11 @@ export function EngineLogo({ engine, size = 'md', className }: EngineLogoProps) 
 export const engineLabels: Record<Engine, string> = {
   UNITY: 'Unity',
   UNREAL: 'Unreal',
+  BLENDER: 'Blender',
+  STANDALONE_3D: '3D General',
+  AUDIO: 'Audio',
+  IMAGE: 'Image',
+  VIDEO: 'Video',
+  OTHER: 'Other engine',
   ENGINE_AGNOSTIC: 'Engine-agnostic',
 };
