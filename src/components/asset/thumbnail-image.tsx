@@ -51,21 +51,38 @@ export function ThumbnailImage({
         <div className="absolute inset-0 skeleton" aria-hidden />
       ) : null}
       {url && !errored ? (
-        <Image
-          src={url}
-          alt={alt}
-          fill={fill}
-          width={fill ? undefined : width}
-          height={fill ? undefined : height}
-          priority={priority}
-          sizes={fill ? sizes : undefined}
-          className={cn(
-            'object-cover transition-opacity duration-200',
-            loaded ? 'opacity-100' : 'opacity-0',
-          )}
-          onLoad={() => setLoaded(true)}
-          onError={() => setErrored(true)}
-        />
+        // next/image refuses blob: / data: URLs (no remote-pattern match) — fall
+        // back to a plain <img> for local-preview thumbnails uploaded by the
+        // publish wizard so the preview renders the moment the file is picked.
+        url.startsWith('blob:') || url.startsWith('data:') ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={url}
+            alt={alt}
+            className={cn(
+              'absolute inset-0 h-full w-full object-cover transition-opacity duration-200',
+              loaded ? 'opacity-100' : 'opacity-0',
+            )}
+            onLoad={() => setLoaded(true)}
+            onError={() => setErrored(true)}
+          />
+        ) : (
+          <Image
+            src={url}
+            alt={alt}
+            fill={fill}
+            width={fill ? undefined : width}
+            height={fill ? undefined : height}
+            priority={priority}
+            sizes={fill ? sizes : undefined}
+            className={cn(
+              'object-cover transition-opacity duration-200',
+              loaded ? 'opacity-100' : 'opacity-0',
+            )}
+            onLoad={() => setLoaded(true)}
+            onError={() => setErrored(true)}
+          />
+        )
       ) : null}
       {errored || !url ? <ThumbnailPlaceholder alt={alt} /> : null}
     </div>

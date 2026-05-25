@@ -260,7 +260,7 @@ export function WizardProvider({ initialAsset, locale, children }: WizardProvide
   return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>;
 }
 
-export function isChecklistReady(c: ChecklistState, engine: 'UNITY' | 'UNREAL' | 'ENGINE_AGNOSTIC'): boolean {
+export function isChecklistReady(c: ChecklistState, engine: import('@/lib/api/types').Engine): boolean {
   // Analyzer + AV are async post-publish — they no longer gate the Publish button.
   // The detail page surfaces their status (PENDING / READY / CLEAN / INFECTED /
   // SKIPPED_SIZE) so viewers know what's happened. INFECTED still needs the

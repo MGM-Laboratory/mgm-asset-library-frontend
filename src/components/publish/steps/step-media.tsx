@@ -10,6 +10,7 @@ import { toast } from '@/components/ui/toaster';
 import { useWizard } from '../wizard-context';
 import { useAuthedFetch } from '@/lib/api/client';
 import { uploadEditorMedia } from '@/components/rich-text/editor-media-upload';
+import { putWithProgress } from '@/lib/upload/put-with-progress';
 import { cn } from '@/lib/utils';
 
 interface InitiateThumb {
@@ -26,7 +27,9 @@ export function StepMedia() {
   const fetcher = useAuthedFetch();
   const { data: session } = useSession();
   const [uploadingThumb, setUploadingThumb] = useState(false);
+  const [thumbProgress, setThumbProgress] = useState<number | null>(null);
   const [uploadingPreview, setUploadingPreview] = useState(false);
+  const [previewProgress, setPreviewProgress] = useState<number | null>(null);
   const [localThumbUrl, setLocalThumbUrl] = useState<string | null>(null);
   const thumbInputRef = useRef<HTMLInputElement | null>(null);
   const previewInputRef = useRef<HTMLInputElement | null>(null);
@@ -44,6 +47,7 @@ export function StepMedia() {
       return;
     }
     setUploadingThumb(true);
+    setThumbProgress(0);
     const objectUrl = URL.createObjectURL(file);
     // Swap previous local URL — revoke after the new one is in place to avoid flashing empty state.
     const previousLocal = localThumbUrl;
@@ -58,10 +62,12 @@ export function StepMedia() {
           bytes: file.size,
         },
       });
-      await fetch(initiate.putUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type || 'image/png' },
+      await putWithProgress({
+        url: initiate.putUrl,
         body: file,
+        contentType: file.type || 'image/png',
+        onProgress: (loaded, total) =>
+          setThumbProgress(total ? Math.min(100, Math.round((loaded / total) * 100)) : null),
       });
       await fetcher('/files/thumbnails/complete', {
         method: 'POST',
@@ -77,13 +83,18 @@ export function StepMedia() {
       URL.revokeObjectURL(objectUrl);
     } finally {
       setUploadingThumb(false);
+      setThumbProgress(null);
     }
   };
 
   const handlePreviewMedia = async (file: File) => {
     setUploadingPreview(true);
+    setPreviewProgress(0);
     try {
-      const { viewUrl, key } = await uploadEditorMedia(file, session?.accessToken);
+      const { viewUrl, key } = await uploadEditorMedia(file, session?.accessToken, {
+        onProgress: (loaded, total) =>
+          setPreviewProgress(total ? Math.min(100, Math.round((loaded / total) * 100)) : null),
+      });
       const next = [
         ...(((wiz.asset as unknown as { previewMedia?: PreviewMediaItem[] }).previewMedia) ?? []),
         {
@@ -102,6 +113,7 @@ export function StepMedia() {
       });
     } finally {
       setUploadingPreview(false);
+      setPreviewProgress(null);
       setPreviewKind(null);
     }
   };
@@ -130,8 +142,17 @@ export function StepMedia() {
             <>
               <ThumbnailImage src={thumbUrl} alt="Thumbnail preview" className="!rounded-[20px]" />
               {uploadingThumb ? (
-                <div className="absolute inset-0 bg-ink/40 backdrop-blur-[4px] flex items-center justify-center text-white">
-                  <Loader2 className="h-5 w-5 animate-spin" strokeWidth={2.25} />
+                <div className="absolute inset-0 bg-ink/55 backdrop-blur-[4px] flex flex-col items-center justify-center text-white gap-3 px-6">
+                  <div className="inline-flex items-center gap-2 text-[13px] font-medium">
+                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.25} />
+                    Uploading{thumbProgress != null ? ` · ${thumbProgress}%` : '…'}
+                  </div>
+                  <div className="w-full max-w-[260px] h-1.5 rounded-full bg-white/25 overflow-hidden">
+                    <div
+                      className="h-full bg-white transition-[width] duration-150"
+                      style={{ width: `${thumbProgress ?? 0}%` }}
+                    />
+                  </div>
                 </div>
               ) : null}
               <div className="absolute bottom-3 right-3 flex items-center gap-2">
@@ -153,11 +174,24 @@ export function StepMedia() {
               className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-ink-3 hover:text-ink hover:bg-surface-muted/40 transition-colors duration-120"
             >
               {uploadingThumb ? (
-                <Loader2 className="h-6 w-6 animate-spin" strokeWidth={2.25} />
+                <>
+                  <Loader2 className="h-6 w-6 animate-spin" strokeWidth={2.25} />
+                  <span className="text-[13px] font-medium text-ink">
+                    Uploading{thumbProgress != null ? ` · ${thumbProgress}%` : '…'}
+                  </span>
+                  <div className="w-44 h-1 rounded-full bg-line overflow-hidden">
+                    <div
+                      className="h-full bg-brand-blue transition-[width] duration-150"
+                      style={{ width: `${thumbProgress ?? 0}%` }}
+                    />
+                  </div>
+                </>
               ) : (
-                <ImagePlus className="h-6 w-6" strokeWidth={2.25} />
+                <>
+                  <ImagePlus className="h-6 w-6" strokeWidth={2.25} />
+                  <span className="text-[14px] font-medium">{t('thumbnailDrop')}</span>
+                </>
               )}
-              <span className="text-[14px] font-medium">{t('thumbnailDrop')}</span>
             </button>
           )}
         </div>
@@ -185,9 +219,18 @@ export function StepMedia() {
           <AddButton icon={Music} onClick={() => { setPreviewKind('audio'); previewInputRef.current?.click(); }} label={t('addAudio')} />
           <AddButton icon={FileBox} onClick={() => { setPreviewKind('3d'); previewInputRef.current?.click(); }} label={t('add3d')} />
           {uploadingPreview ? (
-            <span className="inline-flex items-center gap-1.5 text-caption text-ink-3">
+            <span className="inline-flex items-center gap-2 text-caption text-ink-3">
               <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.25} />
-              {t('uploading')}
+              <span>
+                {t('uploading')}
+                {previewProgress != null ? ` · ${previewProgress}%` : ''}
+              </span>
+              <span className="w-24 h-1 rounded-full bg-line overflow-hidden align-middle">
+                <span
+                  className="block h-full bg-brand-blue transition-[width] duration-150"
+                  style={{ width: `${previewProgress ?? 0}%` }}
+                />
+              </span>
             </span>
           ) : null}
         </div>
