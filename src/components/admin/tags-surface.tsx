@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { GitMerge, Pencil, Trash2 } from 'lucide-react';
+import { AdminListSkeleton } from './admin-list-skeleton';
 import { DataTable } from './data-table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -89,6 +90,9 @@ export function AdminTagsSurface() {
         </Button>
       </div>
 
+      {list.isPending && rows.length === 0 ? (
+        <AdminListSkeleton rows={8} />
+      ) : (
       <DataTable
         rows={rows}
         empty="No tags yet."
@@ -148,6 +152,7 @@ export function AdminTagsSurface() {
           },
         ]}
       />
+      )}
       <div ref={sentinelRef} className="h-10 mt-3 text-center text-caption text-ink-3">
         {list.isFetchingNextPage ? 'Loading…' : null}
       </div>

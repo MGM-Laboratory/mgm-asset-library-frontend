@@ -22,6 +22,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { AdminListSkeleton } from './admin-list-skeleton';
 import { CategoryEditModal } from './category-edit-modal';
 import { useAuthedFetch } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queries';
@@ -97,32 +98,42 @@ export function AdminCategoriesSurface() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-caption text-ink-3 geist-tnum">{list.data?.length ?? 0} categories</p>
+        <p className="text-caption text-ink-3 geist-tnum">
+          {list.isPending ? 'Loading…' : `${list.data?.length ?? 0} categories`}
+        </p>
         <Button leadingIcon={<Plus className="h-4 w-4" strokeWidth={2.25} />} onClick={() => setCreating(true)}>
           New category
         </Button>
       </div>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext
-          items={(list.data ?? []).map((c) => c.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <Card padding="none">
-            <ul className="divide-y divide-line">
-              {(list.data ?? []).map((cat) => (
-                <SortableRow
-                  key={cat.id}
-                  cat={cat}
-                  onEdit={() => setEditing(cat)}
-                  onToggle={(next) => toggle.mutate({ id: cat.id, isActive: next })}
-                  onDelete={() => remove.mutate(cat.id)}
-                />
-              ))}
-            </ul>
-          </Card>
-        </SortableContext>
-      </DndContext>
+      {list.isPending ? (
+        <AdminListSkeleton rows={6} />
+      ) : list.isError ? (
+        <Card padding="md" className="text-caption text-brand-red">
+          Failed to load categories: {list.error instanceof Error ? list.error.message : String(list.error)}
+        </Card>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext
+            items={(list.data ?? []).map((c) => c.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <Card padding="none">
+              <ul className="divide-y divide-line">
+                {(list.data ?? []).map((cat) => (
+                  <SortableRow
+                    key={cat.id}
+                    cat={cat}
+                    onEdit={() => setEditing(cat)}
+                    onToggle={(next) => toggle.mutate({ id: cat.id, isActive: next })}
+                    onDelete={() => remove.mutate(cat.id)}
+                  />
+                ))}
+              </ul>
+            </Card>
+          </SortableContext>
+        </DndContext>
+      )}
 
       {(editing || creating) ? (
         <CategoryEditModal

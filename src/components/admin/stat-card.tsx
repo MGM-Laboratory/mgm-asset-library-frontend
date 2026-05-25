@@ -26,7 +26,7 @@ export function StatCard({ label, value, trend, href, tone = 'neutral' }: StatCa
         href && 'hover:-translate-y-px hover:shadow-2 hover:border-ink/20 cursor-pointer',
       )}
     >
-      <p className="text-eyebrow uppercase tracking-[0.12em] text-ink-3">{label}</p>
+      <p className="text-eyebrow uppercase tracking-[0.12em] text-ink-3 whitespace-nowrap">{label}</p>
       <p className="mt-2 font-display text-display-lg text-ink geist-tnum tracking-[-0.02em] leading-none">
         {value}
       </p>

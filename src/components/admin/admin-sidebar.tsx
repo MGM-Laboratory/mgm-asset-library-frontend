@@ -2,6 +2,7 @@
 
 import NextLink from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   LayoutDashboard,
   Package,
@@ -20,6 +21,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { publicEnv } from '@/lib/env.public';
+import { toast } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 
 interface Item {
@@ -27,6 +29,8 @@ interface Item {
   label: string;
   icon: typeof LayoutDashboard;
   external?: boolean;
+  /** When true, the link injects ?access_token=… from the current session. */
+  needsAccessToken?: boolean;
 }
 
 interface Group {
@@ -74,6 +78,7 @@ const GROUPS: Group[] = [
         label: 'Queues',
         icon: ListChecks,
         external: true,
+        needsAccessToken: true,
       },
     ],
   },
@@ -81,6 +86,20 @@ const GROUPS: Group[] = [
 
 export function AdminSidebar() {
   const pathname = usePathname() ?? '';
+  const { data: session } = useSession();
+
+  const openWithToken = (baseHref: string) => {
+    const token = session?.accessToken;
+    if (!token) {
+      toast.error('Sign-in token missing', {
+        description: 'Reload the page and try again.',
+      });
+      return;
+    }
+    const url = `${baseHref}${baseHref.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(token)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <aside
       aria-label="Admin sections"
@@ -119,14 +138,24 @@ export function AdminSidebar() {
                 return (
                   <li key={item.href}>
                     {item.external ? (
-                      <a
-                        href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 rounded-[10px]"
-                      >
-                        {body}
-                      </a>
+                      item.needsAccessToken ? (
+                        <button
+                          type="button"
+                          onClick={() => openWithToken(item.href)}
+                          className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 rounded-[10px]"
+                        >
+                          {body}
+                        </button>
+                      ) : (
+                        <a
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 rounded-[10px]"
+                        >
+                          {body}
+                        </a>
+                      )
                     ) : (
                       <NextLink
                         href={item.href}
