@@ -157,9 +157,17 @@ export function StepBasics() {
         <LicenseModal licenseId={license.id} onOpenChange={setLicensePreviewOpen} />
       ) : null}
 
-      {!categories.data?.length ? (
+      {!categories.data?.length && !categories.isPending ? (
         <Alert variant="warning" title="No categories">
-          The backend hasn't seeded any categories yet. Ask an admin.
+          The backend hasn't seeded any categories yet. Ask an admin to run `pnpm seed`.
+        </Alert>
+      ) : null}
+
+      {!licenses.data?.length && !licenses.isPending ? (
+        <Alert variant="warning" title="No licenses">
+          {licenses.error
+            ? `Failed to load licenses: ${licenses.error instanceof Error ? licenses.error.message : String(licenses.error)}`
+            : 'No active licenses are configured. Ask an admin to run `pnpm seed`, or open Admin → Licenses and toggle `isActive` on existing rows.'}
         </Alert>
       ) : null}
     </div>

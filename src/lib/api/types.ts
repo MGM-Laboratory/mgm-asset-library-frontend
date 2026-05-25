@@ -12,7 +12,7 @@ export type AssetStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'DELETED';
 
 export type AnalysisStatus = 'PENDING' | 'ANALYZING' | 'READY' | 'FAILED';
 
-export type AvStatus = 'PENDING' | 'CLEAN' | 'INFECTED' | 'ERROR';
+export type AvStatus = 'PENDING' | 'CLEAN' | 'INFECTED' | 'ERROR' | 'SKIPPED_SIZE';
 
 export type FileKind =
   | 'UNITYPACKAGE'
@@ -48,7 +48,20 @@ export type HiddenFilter = 'true' | 'false' | 'all';
 
 export type DownloadSource = 'WEB' | 'UNITY' | 'UNREAL';
 
-export type RenderPipeline = 'URP' | 'HDRP' | 'SRP' | 'BUILT_IN' | 'NA';
+export type RenderPipeline =
+  // Unity
+  | 'URP'
+  | 'HDRP'
+  | 'SRP'
+  | 'BUILT_IN'
+  // Unreal
+  | 'LUMEN'
+  | 'NANITE'
+  | 'PATH_TRACING'
+  // Blender
+  | 'EEVEE'
+  | 'CYCLES'
+  | 'NA';
 
 export type TargetPlatform =
   | 'WINDOWS'
