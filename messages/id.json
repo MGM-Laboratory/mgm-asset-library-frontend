@@ -308,6 +308,11 @@
       "HDRP": "HDRP",
       "SRP": "SRP",
       "BUILT_IN": "Built-in",
+      "LUMEN": "Lumen",
+      "NANITE": "Nanite",
+      "PATH_TRACING": "Path tracing",
+      "EEVEE": "Eevee",
+      "CYCLES": "Cycles",
       "NA": "Tidak relevan"
     },
     "target": {

@@ -208,6 +208,8 @@ export function WizardProvider({ initialAsset, locale, children }: WizardProvide
     const avResolved =
       latestVersion?.avStatus === 'CLEAN' ||
       analyzerVersion?.avStatus === 'CLEAN' ||
+      latestVersion?.avStatus === 'SKIPPED_SIZE' ||
+      analyzerVersion?.avStatus === 'SKIPPED_SIZE' ||
       ((latestVersion?.avStatus === 'INFECTED' || analyzerVersion?.avStatus === 'INFECTED') && avAcknowledged);
     const semverOk = /^\d+\.\d+\.\d+$/.test(latestVersion?.semver ?? '');
     const hasDescription = Boolean(asset.longDescription || asset.availableLocales.length > 0);
@@ -259,16 +261,15 @@ export function WizardProvider({ initialAsset, locale, children }: WizardProvide
 }
 
 export function isChecklistReady(c: ChecklistState, engine: 'UNITY' | 'UNREAL' | 'ENGINE_AGNOSTIC'): boolean {
-  const items = [
-    c.thumbnail,
-    c.files,
-    c.analysis,
-    c.av,
-    c.license,
-    c.category,
-    c.semver,
-    c.description,
-  ];
+  // Analyzer + AV are async post-publish — they no longer gate the Publish button.
+  // The detail page surfaces their status (PENDING / READY / CLEAN / INFECTED /
+  // SKIPPED_SIZE) so viewers know what's happened. INFECTED still needs the
+  // creator's explicit acknowledgement, which is enforced via the AvBanner.
+  const items = [c.thumbnail, c.files, c.license, c.category, c.semver, c.description];
   if (engine !== 'ENGINE_AGNOSTIC') items.push(c.compatibility);
-  return items.every((i) => i.status === 'done');
+  const baseReady = items.every((i) => i.status === 'done');
+  // Still respect explicit INFECTED state — require the creator to tick the
+  // "I acknowledge" checkbox so they understand they're publishing flagged files.
+  if (c.av.status === 'in-progress' && !baseReady) return false;
+  return baseReady;
 }

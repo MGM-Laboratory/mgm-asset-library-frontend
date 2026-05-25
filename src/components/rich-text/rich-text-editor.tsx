@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import { Extension } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
@@ -187,13 +187,11 @@ export function RichTextEditor({
     },
   });
 
-  useEffect(() => {
-    if (!editor || !value) return;
-    const current = JSON.stringify(editor.getJSON());
-    const next = JSON.stringify(value);
-    if (current !== next) editor.commands.setContent(value, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, editor]);
+  // We intentionally do NOT re-sync `value` → editor.setContent here. TipTap
+  // is uncontrolled after mount; resyncing every keystroke caused mid-typing
+  // reverts when the parent state lagged behind the editor's own snapshot.
+  // Parents that genuinely need to swap content (e.g. language tabs) should
+  // remount via `key` instead of relying on prop drift.
 
   const handleImageUpload = useCallback(
     async (file: File) => {

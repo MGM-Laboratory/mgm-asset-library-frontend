@@ -15,6 +15,7 @@ import {
   ModalFooter,
 } from '@/components/ui/modal';
 import { Field, Input, Textarea } from '@/components/ui/input';
+import { AdminListSkeleton } from './admin-list-skeleton';
 import { useAuthedFetch } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queries';
 import { toast } from '@/components/ui/toaster';
@@ -56,12 +57,21 @@ export function AdminLicensesSurface() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-caption text-ink-3 geist-tnum">{list.data?.length ?? 0} licenses</p>
+        <p className="text-caption text-ink-3 geist-tnum">
+          {list.isPending ? 'Loading…' : `${list.data?.length ?? 0} licenses`}
+        </p>
         <Button leadingIcon={<Plus className="h-4 w-4" strokeWidth={2.25} />} onClick={() => setCreating(true)}>
           New license
         </Button>
       </div>
 
+      {list.isPending ? (
+        <AdminListSkeleton rows={5} />
+      ) : list.isError ? (
+        <Card padding="md" className="text-caption text-brand-red">
+          Failed to load licenses: {list.error instanceof Error ? list.error.message : String(list.error)}
+        </Card>
+      ) : (
       <Card padding="none">
         <ul className="divide-y divide-line">
           {(list.data ?? []).map((lic) => (
@@ -94,6 +104,7 @@ export function AdminLicensesSurface() {
           ))}
         </ul>
       </Card>
+      )}
 
       {(editing || creating) ? (
         <LicenseEditModal

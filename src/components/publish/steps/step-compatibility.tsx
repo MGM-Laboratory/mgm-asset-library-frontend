@@ -12,7 +12,14 @@ import { useWizard } from '../wizard-context';
 import type { CompatibilityRow, RenderPipeline, TargetPlatform } from '@/lib/api/types';
 import { logger } from '@/lib/logger';
 
-const RENDER_PIPELINES: RenderPipeline[] = ['URP', 'HDRP', 'SRP', 'BUILT_IN'];
+// Per-engine pipeline catalogues. RenderPipeline values are stored as plain
+// strings in Prisma, so the frontend is the source of truth for which
+// per-engine options are surfaced in the chip selector.
+const RENDER_PIPELINES_BY_ENGINE: Record<'UNITY' | 'UNREAL' | 'ENGINE_AGNOSTIC', RenderPipeline[]> = {
+  UNITY: ['URP', 'HDRP', 'SRP', 'BUILT_IN'],
+  UNREAL: ['LUMEN', 'NANITE', 'PATH_TRACING'],
+  ENGINE_AGNOSTIC: [],
+};
 const TARGETS: TargetPlatform[] = [
   'WINDOWS',
   'MAC',
@@ -98,10 +105,10 @@ export function StepCompatibility() {
                   </datalist>
                 </Field>
 
-                {wiz.asset.engine === 'UNITY' ? (
+                {RENDER_PIPELINES_BY_ENGINE[wiz.asset.engine]?.length ? (
                   <Field label={t('renderPipelines')} className="flex-[1.6] min-w-[260px]">
                     <ChipFilter
-                      options={RENDER_PIPELINES.map((rp) => ({
+                      options={RENDER_PIPELINES_BY_ENGINE[wiz.asset.engine].map((rp) => ({
                         label: tSearch(`renderPipeline.${rp}`),
                         value: rp,
                       }))}
@@ -149,16 +156,17 @@ export function StepCompatibility() {
       <Button
         variant="secondary"
         leadingIcon={<Plus className="h-4 w-4" strokeWidth={2.25} />}
-        onClick={() =>
+        onClick={() => {
+          const defaultPipelines = RENDER_PIPELINES_BY_ENGINE[wiz.asset.engine];
           void persist([
             ...rows,
             {
               engineVersion: suggested[0] ?? '',
-              renderPipelines: wiz.asset.engine === 'UNITY' ? ['URP'] : [],
+              renderPipelines: defaultPipelines?.length ? [defaultPipelines[0]] : [],
               targets: ['WINDOWS'],
             },
-          ])
-        }
+          ]);
+        }}
       >
         {t('addRow')}
       </Button>
