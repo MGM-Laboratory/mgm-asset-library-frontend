@@ -10,11 +10,17 @@ import { Alert } from '@/components/ui/alert';
 import { useAuthedFetch } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queries';
 import { useWizard } from '../wizard-context';
-import type { Category, LicenseSummary, LocaleCode } from '@/lib/api/types';
+import type { Category, Engine, LicenseSummary, LocaleCode } from '@/lib/api/types';
 
-const ENGINES: { value: 'UNITY' | 'UNREAL' | 'ENGINE_AGNOSTIC'; label: string }[] = [
-  { value: 'UNITY', label: 'Unity' },
-  { value: 'UNREAL', label: 'Unreal' },
+const ENGINES: { value: Engine; label: string; hint?: string }[] = [
+  { value: 'UNITY', label: 'Unity', hint: 'Unity 2021+ / 6000+' },
+  { value: 'UNREAL', label: 'Unreal', hint: 'UE 5.x' },
+  { value: 'BLENDER', label: 'Blender', hint: '.blend, Eevee / Cycles' },
+  { value: 'STANDALONE_3D', label: '3D General', hint: '.fbx / .glb / .obj / .usd' },
+  { value: 'AUDIO', label: 'Audio', hint: '.wav / .mp3 / .ogg' },
+  { value: 'IMAGE', label: 'Image', hint: '.png / .jpg / .exr / textures' },
+  { value: 'VIDEO', label: 'Video', hint: '.mp4 / .mov' },
+  { value: 'OTHER', label: 'Other engine', hint: 'Godot, CryEngine, custom' },
   { value: 'ENGINE_AGNOSTIC', label: 'Engine-agnostic' },
 ];
 
@@ -70,13 +76,13 @@ export function StepBasics() {
       </Field>
 
       <Field label={t('engine')} required>
-        <div className="grid sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {ENGINES.map((e) => {
             const active = wiz.asset.engine === e.value;
             return (
               <label
                 key={e.value}
-                className={`flex items-center gap-2.5 p-3 rounded-[12px] border cursor-pointer transition-colors duration-120 ${
+                className={`flex items-start gap-2.5 p-3 rounded-[12px] border cursor-pointer transition-colors duration-120 ${
                   active ? 'border-ink bg-surface-muted/60' : 'border-line hover:border-ink/40'
                 } ${isPublished ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
@@ -86,9 +92,14 @@ export function StepBasics() {
                   checked={active}
                   disabled={isPublished}
                   onChange={() => wiz.patch({ engine: e.value })}
-                  className="h-4 w-4 accent-ink"
+                  className="h-4 w-4 mt-0.5 accent-ink shrink-0"
                 />
-                <span className="text-[14px] font-medium text-ink">{e.label}</span>
+                <div className="min-w-0">
+                  <span className="block text-[14px] font-medium text-ink truncate">{e.label}</span>
+                  {e.hint ? (
+                    <span className="block text-caption text-ink-3 truncate">{e.hint}</span>
+                  ) : null}
+                </div>
               </label>
             );
           })}

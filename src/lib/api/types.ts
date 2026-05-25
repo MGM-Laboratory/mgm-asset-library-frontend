@@ -6,7 +6,16 @@
 
 export type LocaleCode = 'en' | 'id';
 
-export type Engine = 'UNITY' | 'UNREAL' | 'ENGINE_AGNOSTIC';
+export type Engine =
+  | 'UNITY'
+  | 'UNREAL'
+  | 'BLENDER'
+  | 'STANDALONE_3D'
+  | 'AUDIO'
+  | 'IMAGE'
+  | 'VIDEO'
+  | 'OTHER'
+  | 'ENGINE_AGNOSTIC';
 
 export type AssetStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'DELETED';
 
