@@ -3,9 +3,7 @@
  * codegen replacements don't bleed.
  */
 import type {
-  AnalysisStatus,
   AssetStatus,
-  AvStatus,
   Engine,
   LocaleCode,
   PageInfo,
@@ -174,19 +172,6 @@ export type AdminAssetRequest = AssetRequest;
 export interface AdminAssetRequestPage {
   items: AdminAssetRequest[];
   pageInfo: PageInfo;
-}
-
-export interface AdminAvVersion {
-  versionId: string;
-  semver: string;
-  assetId: string;
-  assetSlug: string;
-  assetTitle: string;
-  ownerId: string;
-  ownerDisplayName: string;
-  detectedAt: string;
-  files: { id: string; relativePath: string; signature: string | null; status: AvStatus }[];
-  analysisStatus: AnalysisStatus;
 }
 
 export interface AdminStorageUserRow {

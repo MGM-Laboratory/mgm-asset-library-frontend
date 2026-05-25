@@ -7,7 +7,6 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EngineLogo, engineLabels } from '@/components/asset/engine-logo';
 import { VersionBadge } from '@/components/asset/version-badge';
-import { AvBanner } from '../av-banner';
 import { Alert } from '@/components/ui/alert';
 import { formatBytes } from '@/lib/format';
 import type { LocaleCode } from '@/lib/api/types';
@@ -32,8 +31,6 @@ export function StepReview() {
         <h2 className="font-display text-h2 text-ink tracking-[-0.01em] mb-1">{t('title')}</h2>
         <p className="text-body-sm text-ink-3">{t('subtitle')}</p>
       </div>
-
-      <AvBanner />
 
       <Card>
         <SectionHead title={tBasics('title')} onEdit={() => goto('basics')} />
