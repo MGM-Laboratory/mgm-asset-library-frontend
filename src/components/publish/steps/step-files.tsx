@@ -13,6 +13,7 @@ import { AvBanner } from '../av-banner';
 import { formatBytes } from '@/lib/format';
 import type { LocaleCode } from '@/lib/api/types';
 import type { UploadStatus, UploadTask } from '@/lib/upload/types';
+import type { AvStatus } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
 
 export function StepFiles() {
@@ -41,8 +42,9 @@ export function StepFiles() {
 
   const addFiles = (files: File[], stripBase = false) => {
     const items = files.map((f) => {
-      const path =
-        (f as File & { webkitRelativePath?: string }).webkitRelativePath ?? f.name;
+      const raw =
+        (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name;
+      const path = raw.replace(/\\/g, '/');
       const relativePath = stripBase
         ? path.split('/').slice(1).join('/') || path
         : path;
@@ -190,7 +192,7 @@ function FileRow({
   locale,
 }: {
   task: UploadTask;
-  av?: 'CLEAN' | 'INFECTED' | 'ERROR' | 'PENDING';
+  av?: AvStatus;
   onCancel: () => void;
   onRetry: () => void;
   locale: LocaleCode;

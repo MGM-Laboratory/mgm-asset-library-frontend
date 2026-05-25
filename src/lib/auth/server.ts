@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { auth, isMockAuth } from './index';
@@ -26,7 +27,9 @@ export interface ResolvedSession {
   mock?: true;
 }
 
-export async function getSession(): Promise<ResolvedSession | null> {
+// Cached per request so layout + page server components share a single
+// underlying call to `auth()` instead of running it twice on every navigation.
+export const getSession = cache(async (): Promise<ResolvedSession | null> => {
   if (isMockAuth) {
     return { mock: true, accessToken: 'mock', expiresAt: Number.MAX_SAFE_INTEGER };
   }
@@ -37,7 +40,7 @@ export async function getSession(): Promise<ResolvedSession | null> {
     expiresAt: session.expiresAt,
     error: session.error,
   };
-}
+});
 
 export async function requireSession(callbackUrl?: string): Promise<ResolvedSession> {
   const session = await getSession();
@@ -48,7 +51,9 @@ export async function requireSession(callbackUrl?: string): Promise<ResolvedSess
   return session;
 }
 
-export async function fetchMe(session: ResolvedSession): Promise<MeResponse> {
+// Cached per request, keyed by access token. Layout + page can both call
+// fetchMe without producing a duplicate /auth/me round-trip.
+export const fetchMe = cache(async (session: ResolvedSession): Promise<MeResponse> => {
   if (session.mock) return MOCK_USER;
   const locale = (await cookies()).get('NEXT_LOCALE')?.value as 'en' | 'id' | undefined;
   try {
@@ -61,7 +66,7 @@ export async function fetchMe(session: ResolvedSession): Promise<MeResponse> {
     logger.warn('fetchMe failed', { err: err instanceof Error ? err.message : String(err) });
     throw err;
   }
-}
+});
 
 export async function requireAdmin(): Promise<MeResponse> {
   const session = await requireSession();
