@@ -10,21 +10,13 @@ import { useWizard } from '../wizard-context';
 import { useAuthedFetch } from '@/lib/api/client';
 import { uploadEditorMedia } from '@/components/rich-text/editor-media-upload';
 import { putWithProgress } from '@/lib/upload/put-with-progress';
+import type { PreviewMediaItem } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
 
 interface InitiateThumb {
   putUrl: string;
   key: string;
   expiresAt: string;
-}
-
-interface PreviewMediaItem {
-  id: string;
-  kind: 'image' | 'video' | 'audio' | '3d';
-  key: string;
-  viewUrl: string;
-  label: string;
-  mime?: string;
 }
 
 const THUMB_MAX = 8 * 1024 * 1024;
@@ -104,8 +96,8 @@ export function StepMedia() {
         onProgress: (loaded, total) =>
           setPreviewProgress(total ? Math.min(100, Math.round((loaded / total) * 100)) : null),
       });
-      const next = [
-        ...(((wiz.asset as unknown as { previewMedia?: PreviewMediaItem[] }).previewMedia) ?? []),
+      const next: PreviewMediaItem[] = [
+        ...(wiz.asset.previewMedia ?? []),
         {
           id: cryptoRandomId(),
           kind: previewKind ?? 'image',
@@ -127,8 +119,7 @@ export function StepMedia() {
     }
   };
 
-  const previewMedia: PreviewMediaItem[] =
-    ((wiz.asset as unknown as { previewMedia?: PreviewMediaItem[] }).previewMedia) ?? [];
+  const previewMedia: PreviewMediaItem[] = wiz.asset.previewMedia ?? [];
 
   const removePreview = (id: string) => {
     wiz.patch({ previewMedia: previewMedia.filter((m) => m.id !== id) });
