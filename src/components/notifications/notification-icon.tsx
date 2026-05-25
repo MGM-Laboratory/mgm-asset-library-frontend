@@ -9,7 +9,6 @@ import {
   Star,
   RefreshCw,
   AlertTriangle,
-  ShieldAlert,
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
@@ -28,8 +27,6 @@ const ICON_MAP: Record<NotificationType, LucideIcon> = {
   FEATURED_FEATURED: Star,
   VERSION_PUBLISHED: RefreshCw,
   ANALYZER_FAILED: AlertTriangle,
-  AV_INFECTED_WARNING: ShieldAlert,
-  AV_INFECTED_ADMIN_ALERT: ShieldAlert,
   ADMIN_PROMOTED: ShieldCheck,
   ADMIN_DEMOTED: ShieldCheck,
 };
@@ -46,8 +43,6 @@ const TINT_MAP: Record<NotificationType, string> = {
   FEATURED_FEATURED: 'bg-brand-yellow-50 text-[#a16800]',
   VERSION_PUBLISHED: 'bg-brand-green-50 text-brand-green',
   ANALYZER_FAILED: 'bg-brand-red-50 text-brand-red',
-  AV_INFECTED_WARNING: 'bg-brand-red-50 text-brand-red',
-  AV_INFECTED_ADMIN_ALERT: 'bg-brand-red-50 text-brand-red',
   ADMIN_PROMOTED: 'bg-brand-green-50 text-brand-green',
   ADMIN_DEMOTED: 'bg-surface-muted text-ink-2',
 };
@@ -80,13 +75,11 @@ export function notificationLink(type: string, payload: Record<string, unknown>)
     case 'REPORT_RECEIVED_FOR_YOUR_ASSET':
       return slug ? `/assets/${slug}` : '/notifications';
     case 'REPORT_CREATED':
-    case 'AV_INFECTED_ADMIN_ALERT':
       return '/admin/reports';
     case 'FEATURED_FEATURED':
     case 'VERSION_PUBLISHED':
       return slug ? `/assets/${slug}` : '/notifications';
     case 'ANALYZER_FAILED':
-    case 'AV_INFECTED_WARNING':
       return payload.assetId ? `/publish/${payload.assetId}` : '/notifications';
     case 'ADMIN_PROMOTED':
     case 'ADMIN_DEMOTED':

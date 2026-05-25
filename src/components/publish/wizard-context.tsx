@@ -56,9 +56,6 @@ interface WizardCtxValue {
   saving: 'idle' | 'saving' | 'saved' | 'error';
   lastSavedAt: number | null;
   dirty: boolean;
-  /** AV acknowledgement state — required before publishing if any file is INFECTED. */
-  avAcknowledged: boolean;
-  setAvAcknowledged: (next: boolean) => void;
   /** Live checklist; the rail re-renders from this. */
   checklist: ChecklistState;
   /** Reload the asset detail (after, e.g., an upload finishes). */
@@ -69,7 +66,6 @@ export interface ChecklistState {
   thumbnail: ChecklistItem;
   files: ChecklistItem;
   analysis: ChecklistItem;
-  av: ChecklistItem;
   license: ChecklistItem;
   category: ChecklistItem;
   semver: ChecklistItem;
@@ -101,7 +97,6 @@ export function WizardProvider({ initialAsset, locale, children }: WizardProvide
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [avAcknowledged, setAvAcknowledged] = useState(false);
 
   const queueRef = useRef<PendingPatch>({});
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -205,12 +200,6 @@ export function WizardProvider({ initialAsset, locale, children }: WizardProvide
     const hasFiles = (latestVersion?.fileCount ?? 0) > 0;
     const analysisReady =
       latestVersion?.analysisStatus === 'READY' || analyzerVersion?.analysisStatus === 'READY';
-    const avResolved =
-      latestVersion?.avStatus === 'CLEAN' ||
-      analyzerVersion?.avStatus === 'CLEAN' ||
-      latestVersion?.avStatus === 'SKIPPED_SIZE' ||
-      analyzerVersion?.avStatus === 'SKIPPED_SIZE' ||
-      ((latestVersion?.avStatus === 'INFECTED' || analyzerVersion?.avStatus === 'INFECTED') && avAcknowledged);
     const semverOk = /^\d+\.\d+\.\d+$/.test(latestVersion?.semver ?? '');
     const hasDescription = Boolean(asset.longDescription || asset.availableLocales.length > 0);
     const compatibilityNeeded = asset.engine !== 'ENGINE_AGNOSTIC';
@@ -222,24 +211,13 @@ export function WizardProvider({ initialAsset, locale, children }: WizardProvide
         status: analysisReady ? 'done' : hasFiles ? 'in-progress' : 'pending',
         label: t('analysisComplete'),
       },
-      av: {
-        status: avResolved
-          ? 'done'
-          : (latestVersion?.avStatus === 'INFECTED' || analyzerVersion?.avStatus === 'INFECTED')
-            ? 'in-progress'
-            : 'pending',
-        label:
-          latestVersion?.avStatus === 'INFECTED' || analyzerVersion?.avStatus === 'INFECTED'
-            ? t('avAcknowledged')
-            : t('avPassed'),
-      },
       license: { status: asset.license?.id ? 'done' : 'pending', label: t('licenseSet') },
       category: { status: asset.category?.id ? 'done' : 'pending', label: t('categorySet') },
       semver: { status: semverOk ? 'done' : 'pending', label: t('semverValid') },
       description: { status: hasDescription ? 'done' : 'pending', label: t('descriptionTranslation') },
       compatibility: { status: compatibilitySet ? 'done' : 'pending', label: t('compatibilitySet') },
     };
-  }, [asset, latestVersion, analyzerVersion, avAcknowledged, t]);
+  }, [asset, latestVersion, analyzerVersion, t]);
 
   const value: WizardCtxValue = {
     asset,
@@ -251,8 +229,6 @@ export function WizardProvider({ initialAsset, locale, children }: WizardProvide
     saving,
     lastSavedAt,
     dirty,
-    avAcknowledged,
-    setAvAcknowledged,
     checklist,
     refresh,
   };
@@ -260,16 +236,13 @@ export function WizardProvider({ initialAsset, locale, children }: WizardProvide
   return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>;
 }
 
-export function isChecklistReady(c: ChecklistState, engine: import('@/lib/api/types').Engine): boolean {
-  // Analyzer + AV are async post-publish — they no longer gate the Publish button.
-  // The detail page surfaces their status (PENDING / READY / CLEAN / INFECTED /
-  // SKIPPED_SIZE) so viewers know what's happened. INFECTED still needs the
-  // creator's explicit acknowledgement, which is enforced via the AvBanner.
+export function isChecklistReady(
+  c: ChecklistState,
+  engine: import('@/lib/api/types').Engine,
+): boolean {
+  // The analyzer runs async after publish; it's informational on the detail
+  // page and no longer gates the Publish button.
   const items = [c.thumbnail, c.files, c.license, c.category, c.semver, c.description];
   if (engine !== 'ENGINE_AGNOSTIC') items.push(c.compatibility);
-  const baseReady = items.every((i) => i.status === 'done');
-  // Still respect explicit INFECTED state — require the creator to tick the
-  // "I acknowledge" checkbox so they understand they're publishing flagged files.
-  if (c.av.status === 'in-progress' && !baseReady) return false;
-  return baseReady;
+  return items.every((i) => i.status === 'done');
 }

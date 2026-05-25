@@ -44,7 +44,7 @@ export function WizardHeader({ variant = 'edit' }: WizardHeaderProps) {
     try {
       await fetcher(`/assets/${wiz.asset.id}/publish`, {
         method: 'POST',
-        body: wiz.avAcknowledged ? { confirmInfectedWarning: true } : {},
+        body: {},
       });
       toast.success(t('publishedToast'));
       router.push(`/assets/${wiz.asset.slug || wiz.asset.id}`);

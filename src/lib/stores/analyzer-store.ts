@@ -1,47 +1,29 @@
 'use client';
 
 import { create } from 'zustand';
-import type { AnalysisStatus, AvStatus } from '@/lib/api/types';
+import type { AnalysisStatus } from '@/lib/api/types';
 
 interface VersionAnalysisState {
   versionId: string;
   analysisStatus: AnalysisStatus;
-  avStatus: AvStatus;
   /** Per-file statuses keyed by file id. */
-  files: Record<string, { status: AnalysisStatus; av?: AvStatus; signature?: string }>;
-  /** Sticky flag — once any file is INFECTED, this stays true until the version restarts. */
-  hasInfected: boolean;
+  files: Record<string, { status: AnalysisStatus }>;
   updatedAt: number;
 }
 
 interface AnalyzerState {
   versions: Record<string, VersionAnalysisState>;
-  applyAnalyzeProgress: (
-    versionId: string,
-    fileId: string,
-    status: AnalysisStatus,
-  ) => void;
+  applyAnalyzeProgress: (versionId: string, fileId: string, status: AnalysisStatus) => void;
   applyAnalyzeReady: (versionId: string) => void;
-  applyAvResult: (
-    versionId: string,
-    fileId: string,
-    status: AvStatus,
-    signature?: string,
-  ) => void;
   reset: (versionId: string) => void;
 }
 
-function ensureVersion(
-  state: AnalyzerState,
-  versionId: string,
-): VersionAnalysisState {
+function ensureVersion(state: AnalyzerState, versionId: string): VersionAnalysisState {
   return (
     state.versions[versionId] ?? {
       versionId,
       analysisStatus: 'PENDING',
-      avStatus: 'PENDING',
       files: {},
-      hasInfected: false,
       updatedAt: Date.now(),
     }
   );
@@ -58,7 +40,7 @@ export const useAnalyzerStore = create<AnalyzerState>((set) => ({
           [versionId]: {
             ...v,
             analysisStatus: status === 'READY' ? 'READY' : 'ANALYZING',
-            files: { ...v.files, [fileId]: { ...v.files[fileId], status } },
+            files: { ...v.files, [fileId]: { status } },
             updatedAt: Date.now(),
           },
         },
@@ -73,24 +55,6 @@ export const useAnalyzerStore = create<AnalyzerState>((set) => ({
           [versionId]: { ...v, analysisStatus: 'READY', updatedAt: Date.now() },
         },
       };
-    }),
-  applyAvResult: (versionId, fileId, status, signature) =>
-    set((state) => {
-      const v = ensureVersion(state, versionId);
-      // avStatus is sticky once INFECTED: a later CLEAN on a different file
-      // must not flip the whole version back to CLEAN.
-      const nextAvStatus = v.avStatus === 'INFECTED' ? 'INFECTED' : status;
-      const next: VersionAnalysisState = {
-        ...v,
-        avStatus: nextAvStatus,
-        files: {
-          ...v.files,
-          [fileId]: { ...v.files[fileId], status: v.files[fileId]?.status ?? 'READY', av: status, signature },
-        },
-        hasInfected: v.hasInfected || status === 'INFECTED',
-        updatedAt: Date.now(),
-      };
-      return { versions: { ...state.versions, [versionId]: next } };
     }),
   reset: (versionId) =>
     set((state) => {

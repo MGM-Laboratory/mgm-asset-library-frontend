@@ -12,7 +12,6 @@ import {
   ScrollText,
   Flag,
   Inbox,
-  ShieldAlert,
   HardDrive,
   Users,
   History,
@@ -58,7 +57,6 @@ const GROUPS: Group[] = [
     items: [
       { href: '/admin/reports', label: 'Reports', icon: Flag },
       { href: '/admin/requests', label: 'Requests', icon: Inbox },
-      { href: '/admin/av', label: 'AV queue', icon: ShieldAlert },
       { href: '/admin/storage', label: 'Storage', icon: HardDrive },
     ],
   },

@@ -21,7 +21,6 @@ export type AssetStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'DELETED';
 
 export type AnalysisStatus = 'PENDING' | 'ANALYZING' | 'READY' | 'FAILED';
 
-export type AvStatus = 'PENDING' | 'CLEAN' | 'INFECTED' | 'ERROR' | 'SKIPPED_SIZE';
 
 export type FileKind =
   | 'UNITYPACKAGE'
@@ -176,7 +175,6 @@ export interface VersionSummary {
   semver: string;
   isLatest: boolean;
   analysisStatus: AnalysisStatus;
-  avStatus: AvStatus;
   publishedAt: string | null;
   bytesTotal: string;
   fileCount: number;
@@ -190,7 +188,6 @@ export interface AssetVersionPayload {
   publishedAt: string | null;
   isLatest: boolean;
   analysisStatus: AnalysisStatus;
-  avStatus: AvStatus;
   bytesTotal: string;
   fileCount: number;
   files: AssetFile[];
@@ -305,8 +302,6 @@ export type NotificationType =
   | 'FEATURED_FEATURED'
   | 'VERSION_PUBLISHED'
   | 'ANALYZER_FAILED'
-  | 'AV_INFECTED_WARNING'
-  | 'AV_INFECTED_ADMIN_ALERT'
   | 'ADMIN_PROMOTED'
   | 'ADMIN_DEMOTED';
 
@@ -391,7 +386,6 @@ export interface CreateCommentInput {
 }
 
 export type AnalysisJobStatus = AnalysisStatus;
-export type AvFileStatus = AvStatus;
 
 export interface AssetAnalyticsSummary {
   totals: { downloads: number; saves: number; downloads7d: number; downloads30d: number };

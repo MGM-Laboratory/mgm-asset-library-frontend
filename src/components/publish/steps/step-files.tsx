@@ -1,20 +1,35 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Upload, FileBox, FolderUp, RefreshCcw, X, ShieldAlert, Check } from 'lucide-react';
+import { Upload, FileBox, FolderUp, RefreshCcw, X, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert } from '@/components/ui/alert';
 import { useWizard } from '../wizard-context';
 import { useUploader } from '@/lib/upload/use-uploader';
-import { useAnalyzerStore } from '@/lib/stores/analyzer-store';
-import { AvBanner } from '../av-banner';
 import { formatBytes } from '@/lib/format';
 import type { LocaleCode } from '@/lib/api/types';
 import type { UploadStatus, UploadTask } from '@/lib/upload/types';
-import type { AvStatus } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
+
+type DisplayRow =
+  | {
+      kind: 'task';
+      id: string;
+      relativePath: string;
+      bytes: number;
+      status: UploadStatus;
+      progress: number;
+      task: UploadTask;
+      error?: string;
+    }
+  | {
+      kind: 'saved';
+      id: string;
+      relativePath: string;
+      bytes: number;
+    };
 
 export function StepFiles() {
   const wiz = useWizard();
@@ -32,31 +47,47 @@ export function StepFiles() {
     },
   });
 
-  // Sync analyzer/AV state into the per-task display so file rows transition
-  // beyond `analyzing` once WS events flow.
-  const analyzerVersion = useAnalyzerStore(
-    (s) => (wiz.latestVersion ? s.versions[wiz.latestVersion.id] : undefined),
-  );
-
-  const tasks = uploader.tasks;
-
   const addFiles = (files: File[], stripBase = false) => {
     const items = files.map((f) => {
-      const raw =
-        (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name;
+      const raw = (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name;
       const path = raw.replace(/\\/g, '/');
-      const relativePath = stripBase
-        ? path.split('/').slice(1).join('/') || path
-        : path;
+      const relativePath = stripBase ? path.split('/').slice(1).join('/') || path : path;
       return { file: f, relativePath };
     });
     uploader.addFiles(items);
   };
 
-  useEffect(() => {
-    if (!wiz.latestVersion) return;
-    // no-op — placeholder for future
-  }, [wiz.latestVersion]);
+  const rows = useMemo<DisplayRow[]>(() => {
+    const taskByFileId = new Map<string, UploadTask>();
+    const taskRows: DisplayRow[] = [];
+    for (const task of uploader.tasks) {
+      if (task.fileId) taskByFileId.set(task.fileId, task);
+      taskRows.push({
+        kind: 'task',
+        id: task.id,
+        relativePath: task.input.relativePath,
+        bytes: task.totalBytes,
+        status: task.status,
+        progress: task.totalBytes
+          ? Math.min(100, Math.round((task.bytesUploaded / task.totalBytes) * 100))
+          : 0,
+        task,
+        error: task.error ?? undefined,
+      });
+    }
+    // Already-saved server files that aren't already represented by an
+    // in-flight task. These are persisted across reloads so the user can see
+    // exactly what's been uploaded so far.
+    const saved: DisplayRow[] = (wiz.latestVersion?.files ?? [])
+      .filter((f) => !taskByFileId.has(f.id))
+      .map((f) => ({
+        kind: 'saved' as const,
+        id: f.id,
+        relativePath: f.relativePath,
+        bytes: Number(f.bytes ?? 0),
+      }));
+    return [...taskRows, ...saved];
+  }, [uploader.tasks, wiz.latestVersion?.files]);
 
   if (!wiz.latestVersion) {
     return (
@@ -66,14 +97,14 @@ export function StepFiles() {
     );
   }
 
+  const totalBytes = rows.reduce((acc, r) => acc + r.bytes, 0);
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-h2 text-ink tracking-[-0.01em] mb-1">{t('title')}</h2>
         <p className="text-body-sm text-ink-3">{t('subtitle')}</p>
       </div>
-
-      <AvBanner />
 
       <div
         onDragOver={(e) => {
@@ -96,10 +127,18 @@ export function StepFiles() {
         <p className="mt-3 text-body font-medium text-ink">{t('drop')}</p>
         <p className="text-caption text-ink-3">{t('or')}</p>
         <div className="mt-3 inline-flex items-center gap-2">
-          <Button variant="secondary" onClick={() => fileInput.current?.click()} leadingIcon={<Upload className="h-4 w-4" strokeWidth={2.25} />}>
+          <Button
+            variant="secondary"
+            onClick={() => fileInput.current?.click()}
+            leadingIcon={<Upload className="h-4 w-4" strokeWidth={2.25} />}
+          >
             {t('browseFiles')}
           </Button>
-          <Button variant="ghost" onClick={() => dirInput.current?.click()} leadingIcon={<FolderUp className="h-4 w-4" strokeWidth={2.25} />}>
+          <Button
+            variant="ghost"
+            onClick={() => dirInput.current?.click()}
+            leadingIcon={<FolderUp className="h-4 w-4" strokeWidth={2.25} />}
+          >
             {t('browseFolder')}
           </Button>
         </div>
@@ -130,44 +169,28 @@ export function StepFiles() {
         />
       </div>
 
-      {tasks.length > 0 ? (
+      {rows.length > 0 ? (
         <div className="rounded-[14px] border border-line bg-surface overflow-hidden">
           <ul className="divide-y divide-line">
-            {tasks.map((task) => {
-              const av = task.fileId ? analyzerVersion?.files[task.fileId]?.av : undefined;
-              return (
-                <FileRow
-                  key={task.id}
-                  task={task}
-                  av={av}
-                  onCancel={() => uploader.cancel(task.id)}
-                  onRetry={() => uploader.retry(task.id)}
+            {rows.map((row) =>
+              row.kind === 'task' ? (
+                <TaskRow
+                  key={row.id}
+                  row={row}
                   locale={locale}
+                  onCancel={() => uploader.cancel(row.task.id)}
+                  onRetry={() => uploader.retry(row.task.id)}
                 />
-              );
-            })}
+              ) : (
+                <SavedRow key={row.id} row={row} locale={locale} />
+              ),
+            )}
           </ul>
           <div className="flex items-center justify-between border-t border-line px-4 py-2.5 text-caption text-ink-3 geist-tnum">
-            <span>{tasks.length} files</span>
-            <span>
-              {t('totalBytes', {
-                size: formatBytes(
-                  tasks.reduce((acc, t) => acc + t.totalBytes, 0),
-                  locale,
-                ),
-              })}
-            </span>
+            <span>{rows.length} files</span>
+            <span>{t('totalBytes', { size: formatBytes(totalBytes, locale) })}</span>
           </div>
         </div>
-      ) : null}
-
-      {wiz.latestVersion.requiresEmptyProject ||
-      (wiz.latestVersion.files ?? []).some(
-        (f) => (f.meta as { requiresEmptyProject?: boolean } | null | undefined)?.requiresEmptyProject,
-      ) ? (
-        <Alert variant="warning" title="Empty project required">
-          This asset will install into an empty Unity / Unreal project. Existing project assets may be overwritten.
-        </Alert>
       ) : null}
 
       <label className="inline-flex items-start gap-3 p-3 rounded-[12px] border border-line cursor-pointer hover:border-ink/40 transition-colors duration-120 max-w-[640px]">
@@ -184,24 +207,20 @@ export function StepFiles() {
   );
 }
 
-function FileRow({
-  task,
-  av,
+function TaskRow({
+  row,
+  locale,
   onCancel,
   onRetry,
-  locale,
 }: {
-  task: UploadTask;
-  av?: AvStatus;
+  row: Extract<DisplayRow, { kind: 'task' }>;
+  locale: LocaleCode;
   onCancel: () => void;
   onRetry: () => void;
-  locale: LocaleCode;
 }) {
   const t = useTranslations('publish.files');
-  const pct = task.totalBytes
-    ? Math.min(100, Math.round((task.bytesUploaded / task.totalBytes) * 100))
-    : 0;
-  const status = derivedStatus(task.status, av);
+  const isDone = row.status === 'analyzing' || row.status === 'ready';
+  const isFailed = row.status === 'failed' || row.status === 'cancelled';
   return (
     <li className="p-3 flex items-center gap-3">
       <div className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-surface-muted text-ink-2">
@@ -209,33 +228,28 @@ function FileRow({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[13.5px] font-medium text-ink truncate">{task.input.relativePath}</span>
+          <span className="text-[13.5px] font-medium text-ink truncate">{row.relativePath}</span>
           <span className="text-caption text-ink-3 geist-tnum shrink-0">
-            {formatBytes(task.totalBytes, locale)}
+            {formatBytes(row.bytes, locale)}
+            {row.status === 'uploading' ? ` · ${row.progress}%` : ''}
           </span>
         </div>
         <div className="mt-1.5 h-1 rounded-full bg-line overflow-hidden">
           <div
             className={cn(
               'h-full transition-all duration-200',
-              av === 'INFECTED'
-                ? 'bg-brand-red'
-                : status === 'ready'
-                  ? 'bg-brand-green'
-                  : status === 'failed' || status === 'cancelled'
-                    ? 'bg-brand-red/70'
-                    : 'bg-brand-blue',
+              isFailed ? 'bg-brand-red/70' : isDone ? 'bg-brand-green' : 'bg-brand-blue',
             )}
-            style={{ width: `${status === 'ready' ? 100 : pct}%` }}
+            style={{ width: `${isDone ? 100 : row.progress}%` }}
           />
         </div>
         <div className="mt-1.5 flex items-center gap-2 text-caption text-ink-3">
-          <StatusPill status={status} av={av} />
-          {task.error ? <span className="text-brand-red truncate">· {task.error}</span> : null}
+          <TaskStatusPill status={row.status} />
+          {row.error ? <span className="text-brand-red truncate">· {row.error}</span> : null}
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        {status === 'failed' ? (
+        {row.status === 'failed' ? (
           <button
             type="button"
             onClick={onRetry}
@@ -258,49 +272,57 @@ function FileRow({
   );
 }
 
-function derivedStatus(taskStatus: UploadStatus, av?: string): UploadStatus | 'av-scanning' {
-  if (taskStatus === 'analyzing' && av === undefined) return 'analyzing';
-  if (taskStatus === 'analyzing' && av === 'PENDING') return 'av-scanning';
-  if (av === 'INFECTED') return 'failed';
-  if (av === 'CLEAN' && taskStatus === 'analyzing') return 'ready';
-  return taskStatus;
+function SavedRow({
+  row,
+  locale,
+}: {
+  row: Extract<DisplayRow, { kind: 'saved' }>;
+  locale: LocaleCode;
+}) {
+  return (
+    <li className="p-3 flex items-center gap-3">
+      <div className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-brand-green-50 text-brand-green">
+        <Check className="h-4 w-4" strokeWidth={2.5} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[13.5px] font-medium text-ink truncate">{row.relativePath}</span>
+          <span className="text-caption text-ink-3 geist-tnum shrink-0">
+            {formatBytes(row.bytes, locale)}
+          </span>
+        </div>
+        <div className="mt-1.5 h-1 rounded-full bg-brand-green overflow-hidden" />
+        <p className="mt-1.5 text-caption text-brand-green font-medium inline-flex items-center gap-1">
+          <Check className="h-3 w-3" strokeWidth={2.5} /> Uploaded
+        </p>
+      </div>
+    </li>
+  );
 }
 
-function StatusPill({
-  status,
-  av,
-}: {
-  status: UploadStatus | 'av-scanning';
-  av?: string;
-}) {
+function TaskStatusPill({ status }: { status: UploadStatus }) {
   const t = useTranslations('publish.files');
-  if (av === 'INFECTED') {
-    return (
-      <span className="inline-flex items-center gap-1 text-brand-red font-medium">
-        <ShieldAlert className="h-3 w-3" strokeWidth={2.25} />
-        {t('infected')}
-      </span>
-    );
-  }
-  if (status === 'ready') {
+  if (status === 'ready' || status === 'analyzing') {
     return (
       <span className="inline-flex items-center gap-1 text-brand-green font-medium">
         <Check className="h-3 w-3" strokeWidth={2.25} />
-        {t('statusReady')}
+        Uploaded
+      </span>
+    );
+  }
+  if (status === 'uploading') {
+    return (
+      <span className="inline-flex items-center gap-1 text-brand-blue font-medium">
+        <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2.25} />
+        Uploading
       </span>
     );
   }
   const key =
     status === 'queued'
       ? 'statusQueued'
-      : status === 'uploading'
-        ? 'statusUploading'
-        : status === 'analyzing'
-          ? 'statusAnalyzing'
-          : status === 'av-scanning'
-            ? 'statusAvScanning'
-            : status === 'failed'
-              ? 'statusFailed'
-              : 'statusCancelled';
-  return <span>{t(key as 'statusReady')}</span>;
+      : status === 'failed'
+        ? 'statusFailed'
+        : 'statusCancelled';
+  return <span>{t(key as 'statusQueued')}</span>;
 }

@@ -233,9 +233,6 @@ export function AssetDetailShell({
                             : '—'}
                         </span>
                       </div>
-                      <div className="mt-2">
-                        <AvStatusBadge status={latestVersion.avStatus} />
-                      </div>
                       <Button
                         size="lg"
                         fullWidth
@@ -316,39 +313,3 @@ export function AssetDetailShell({
   );
 }
 
-function AvStatusBadge({ status }: { status: AssetVersionPayload['avStatus'] }) {
-  switch (status) {
-    case 'CLEAN':
-      return (
-        <Badge variant="success" size="sm">
-          AV: clean
-        </Badge>
-      );
-    case 'PENDING':
-      return (
-        <Badge variant="neutral" size="sm">
-          AV: scanning…
-        </Badge>
-      );
-    case 'INFECTED':
-      return (
-        <Badge variant="danger" size="sm">
-          AV: infected
-        </Badge>
-      );
-    case 'ERROR':
-      return (
-        <Badge variant="warning" size="sm">
-          AV: error
-        </Badge>
-      );
-    case 'SKIPPED_SIZE':
-      return (
-        <Badge variant="warning" size="sm" title="File exceeds the AV scanner size limit; download with caution.">
-          AV: skipped (size)
-        </Badge>
-      );
-    default:
-      return null;
-  }
-}
