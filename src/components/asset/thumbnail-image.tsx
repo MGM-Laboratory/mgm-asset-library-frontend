@@ -42,7 +42,14 @@ export function ThumbnailImage({
       className={cn(
         'relative overflow-hidden rounded-[20px] bg-surface-muted',
         'after:absolute after:inset-0 after:rounded-[20px] after:pointer-events-none after:shadow-[inset_0_0_0_1px_rgba(14,17,22,0.06)]',
-        !fill && 'inline-block',
+        // In fill mode the consumer wraps us in a sized aspect-ratio
+        // container; we have to actually fill that container, otherwise
+        // the absolutely-positioned <Image fill> inside has nothing to
+        // fill and collapses to 0×0 (this was the asset-card / dashboard
+        // "blank thumbnail" bug). We use h-full w-full instead of
+        // absolute inset-0 so this works whether the parent is positioned
+        // or not.
+        fill ? 'h-full w-full' : 'inline-block',
         className,
       )}
       style={fill ? undefined : { width, height }}
