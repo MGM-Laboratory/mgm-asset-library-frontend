@@ -27,18 +27,20 @@ describe('stripDisallowedLiteNodes', () => {
     expect(cleaned.content?.[1]?.type).toBe('bulletList');
   });
 
-  it('strips disallowed nodes (image, table, video, headings)', () => {
+  it('strips disallowed nodes (table, video, headings) but keeps images', () => {
     const doc: TipTapDoc = {
       type: 'doc',
       content: [
         { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'H1' }] },
         { type: 'paragraph', content: [{ type: 'text', text: 'ok' }] },
+        // Images/GIFs are allowed in lite mode (comments) since the editor
+        // supports inline image + GIF embeds.
         { type: 'image', attrs: { src: '/x' } },
         { type: 'table', content: [] },
       ],
     };
     const cleaned = stripDisallowedLiteNodes(doc);
-    expect(cleaned.content?.map((n) => n.type)).toEqual(['paragraph']);
+    expect(cleaned.content?.map((n) => n.type)).toEqual(['paragraph', 'image']);
   });
 
   it('strips disallowed marks (underline, highlight, textStyle)', () => {
