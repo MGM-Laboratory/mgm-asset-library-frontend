@@ -149,6 +149,7 @@ export function MediaGallery({
           <ModelViewerPanel
             src={active.url}
             alt={active.label ?? assetTitle}
+            poster={active.thumb ?? thumbnailUrl ?? thumbnailFallback ?? null}
             animations={active.meta?.animations ?? []}
           />
         ) : (

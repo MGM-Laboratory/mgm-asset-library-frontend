@@ -17,14 +17,16 @@ interface CommentComposerProps {
   autoFocus?: boolean;
 }
 
-function hasPlainText(doc: TipTapDoc): boolean {
+function hasContent(doc: TipTapDoc): boolean {
   let total = 0;
+  let hasMedia = false;
   const visit = (node: { type: string; text?: string; content?: typeof node[] }) => {
     if (node.type === 'text' && node.text) total += node.text.trim().length;
+    if (node.type === 'image') hasMedia = true;
     node.content?.forEach(visit);
   };
   (doc.content ?? []).forEach((n) => visit(n as Parameters<typeof visit>[0]));
-  return total > 0;
+  return total > 0 || hasMedia;
 }
 
 export function CommentComposer({
@@ -37,7 +39,10 @@ export function CommentComposer({
   const [kind, setKind] = useState<CommentKind>(defaultKind);
   const [doc, setDoc] = useState<TipTapDoc>({ type: 'doc', content: [] });
   const [submitting, setSubmitting] = useState(false);
-  const ready = hasPlainText(doc);
+  // Bumped after a successful submit to force the (uncontrolled) editor to
+  // remount with empty content — the editor no longer re-syncs from `value`.
+  const [editorEpoch, setEditorEpoch] = useState(0);
+  const ready = hasContent(doc);
 
   const handleSubmit = async () => {
     if (!ready || submitting) return;
@@ -46,6 +51,7 @@ export function CommentComposer({
     try {
       await onSubmit({ kind, body: safe });
       setDoc({ type: 'doc', content: [] });
+      setEditorEpoch((n) => n + 1);
       logEvent('comment.compose_submit', { kind });
     } finally {
       setSubmitting(false);
@@ -58,6 +64,7 @@ export function CommentComposer({
         <Avatar data={avatarFromServer(me.avatar)} size={32} />
         <div className="flex-1 min-w-0">
           <RichTextEditor
+            key={editorEpoch}
             mode="lite"
             value={doc}
             onChange={setDoc}

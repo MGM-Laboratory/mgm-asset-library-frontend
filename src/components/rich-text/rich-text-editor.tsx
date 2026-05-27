@@ -16,7 +16,6 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import Youtube from '@tiptap/extension-youtube';
 import { useSession } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
 import {
   Bold,
   Italic,
@@ -31,6 +30,7 @@ import {
   Heading3,
   Quote,
   Image as ImageIcon,
+  ImagePlay as GifIcon,
   Youtube as YoutubeIcon,
   Table as TableIcon,
   Minus,
@@ -40,7 +40,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Modal, ModalContent, ModalHeader, ModalTitle, ModalFooter } from '@/components/ui/modal';
 import { Input, Field } from '@/components/ui/input';
-import { TipTapRenderer } from './tiptap-renderer';
+import { GifPicker } from './gif-picker';
 import { uploadEditorMedia } from './editor-media-upload';
 import { toast } from '@/components/ui/toaster';
 import type { TipTapDoc, TipTapNode } from '@/lib/api/types';
@@ -77,6 +77,7 @@ export const LITE_ALLOWED_NODES = new Set([
   'orderedList',
   'listItem',
   'codeBlock',
+  'image',
 ]);
 export const LITE_ALLOWED_MARKS = new Set(['bold', 'italic', 'code', 'link']);
 
@@ -110,7 +111,8 @@ function buildExtensions(mode: RichTextMode, placeholder: string) {
       TableCell,
     ];
   }
-  return base;
+  // Lite mode (comments / release notes) also supports inline images + GIFs.
+  return [...base, Image.configure({ inline: false, allowBase64: false })];
 }
 
 export function RichTextEditor({
@@ -124,13 +126,12 @@ export function RichTextEditor({
   autoFocus,
   footer,
 }: RichTextEditorProps) {
-  const t = useTranslations('editor');
   const { data: session } = useSession();
   const accessToken = session?.accessToken;
 
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [embedOpen, setEmbedOpen] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [busyUploading, setBusyUploading] = useState(false);
 
@@ -236,10 +237,10 @@ export function RichTextEditor({
         editor={editor}
         mode={mode}
         busyUploading={busyUploading}
-        onPreview={() => setPreviewOpen(true)}
         onLink={() => setLinkOpen(true)}
         onImage={() => fileInputRef.current?.click()}
         onEmbed={() => setEmbedOpen(true)}
+        onGif={() => setGifOpen(true)}
       />
       <div
         className="relative overflow-y-auto"
@@ -289,19 +290,11 @@ export function RichTextEditor({
           onSubmit={(url) => editor.commands.setYoutubeVideo({ src: url })}
         />
       ) : null}
-      {previewOpen ? (
-        <Modal open onOpenChange={setPreviewOpen}>
-          <ModalContent size="lg">
-            <ModalHeader>
-              <ModalTitle>{t('preview')}</ModalTitle>
-            </ModalHeader>
-            <TipTapRenderer
-              doc={editor.getJSON() as TipTapDoc}
-              variant={mode === 'full' ? 'full' : 'lite'}
-            />
-          </ModalContent>
-        </Modal>
-      ) : null}
+      <GifPicker
+        open={gifOpen}
+        onOpenChange={setGifOpen}
+        onPick={({ url, alt }) => editor.chain().focus().setImage({ src: url, alt }).run()}
+      />
     </div>
   );
 }
@@ -314,13 +307,13 @@ interface ToolbarProps {
   editor: Editor;
   mode: RichTextMode;
   busyUploading: boolean;
-  onPreview: () => void;
   onLink: () => void;
   onImage: () => void;
   onEmbed: () => void;
+  onGif: () => void;
 }
 
-function Toolbar({ editor, mode, onPreview, onLink, onImage, onEmbed }: ToolbarProps) {
+function Toolbar({ editor, mode, onLink, onImage, onEmbed, onGif }: ToolbarProps) {
   return (
     <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b border-line bg-surface/95 backdrop-blur-[6px] p-1.5 rounded-t-[14px]">
       {mode === 'full' ? (
@@ -377,10 +370,11 @@ function Toolbar({ editor, mode, onPreview, onLink, onImage, onEmbed }: ToolbarP
         label="Numbered list"
         icon={ListOrdered}
       />
+      <Divider />
+      <ToolButton onClick={onImage} label="Insert image" icon={ImageIcon} />
+      <ToolButton onClick={onGif} label="Insert GIF" icon={GifIcon} />
       {mode === 'full' ? (
         <>
-          <Divider />
-          <ToolButton onClick={onImage} label="Insert image" icon={ImageIcon} />
           <ToolButton onClick={onEmbed} label="Embed YouTube" icon={YoutubeIcon} />
           <ToolButton
             onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3 }).run()}
@@ -398,9 +392,6 @@ function Toolbar({ editor, mode, onPreview, onLink, onImage, onEmbed }: ToolbarP
         <span className="text-caption text-ink-4 geist-tnum hidden sm:inline">
           {editor.storage.characterCount?.characters?.() ?? plainTextLength(editor)} chars
         </span>
-        <Button size="sm" variant="ghost" onClick={onPreview} leadingIcon={<Type className="h-4 w-4" strokeWidth={2.25} />}>
-          Preview
-        </Button>
       </div>
     </div>
   );
