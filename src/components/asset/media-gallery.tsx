@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { X, FileBox, Image as ImageIcon, Music, Video as VideoIcon } from 'lucide-react';
+import { X, FileBox, Image as ImageIcon, Music, Video as VideoIcon, EyeOff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { ThumbnailImage } from './thumbnail-image';
 import {
@@ -26,8 +26,13 @@ interface MediaItem {
   id: string;
   kind: 'image' | 'video' | 'audio' | '3d';
   url: string;
+  /** Full-resolution URL opened in the lightbox (falls back to `url`). */
+  fullUrl?: string;
   thumb?: string | null;
   label?: string;
+  /** Sensitive media: blurred until the viewer clicks to reveal. */
+  blur?: boolean;
+  warning?: string;
   meta?: { animations?: string[] };
 }
 
@@ -91,8 +96,11 @@ export function MediaGallery({
   const t = useTranslations('asset.viewer');
   const [activeId, setActiveId] = useState<string | null>(items[0]?.id ?? null);
   const [lightbox, setLightbox] = useState<MediaItem | null>(null);
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
 
   const active = useMemo(() => items.find((i) => i.id === activeId) ?? items[0] ?? null, [activeId, items]);
+  const activeHidden = !!active?.blur && !revealed.has(active.id);
+  const reveal = (id: string) => setRevealed((s) => new Set(s).add(id));
 
   if (items.length === 0) {
     return (
@@ -113,7 +121,7 @@ export function MediaGallery({
         {active?.kind === 'image' ? (
           <button
             type="button"
-            onClick={() => setLightbox(active)}
+            onClick={() => (activeHidden ? reveal(active.id) : setLightbox(active))}
             className="absolute inset-0 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             aria-label={`${active.label ?? assetTitle} — open lightbox`}
           >
@@ -123,9 +131,20 @@ export function MediaGallery({
               fill
               priority
               sizes="(min-width: 1024px) 800px, 100vw"
-              className="object-contain"
+              className={cn('object-contain transition', activeHidden && 'blur-2xl scale-110')}
               unoptimized
             />
+            {activeHidden ? (
+              <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-6 bg-ink/30">
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-ink/80 text-white">
+                  <EyeOff className="h-5 w-5" strokeWidth={2.25} />
+                </span>
+                <span className="text-[14px] font-semibold text-white drop-shadow">
+                  {active.warning?.trim() || 'Sensitive content'}
+                </span>
+                <span className="text-[12px] text-white/85">Click to reveal</span>
+              </span>
+            ) : null}
           </button>
         ) : active?.kind === 'video' ? (
           <video
@@ -209,7 +228,7 @@ export function MediaGallery({
           >
             {lightbox?.kind === 'image' ? (
               <Image
-                src={lightbox.url}
+                src={lightbox.fullUrl ?? lightbox.url}
                 alt={lightbox.label ?? assetTitle}
                 fill
                 sizes="100vw"

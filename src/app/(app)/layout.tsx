@@ -3,6 +3,7 @@ import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { WsBootstrap } from '@/components/navigation/ws-bootstrap';
 import { NotificationsLive } from '@/components/notifications/notification-live';
+import { UploadDock } from '@/components/upload/upload-dock';
 import { requireSession, fetchMe } from '@/lib/auth/server';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -19,6 +20,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <Footer />
       <WsBootstrap token={session.accessToken ?? null} />
       <NotificationsLive />
+      <UploadDock />
     </div>
   );
 }

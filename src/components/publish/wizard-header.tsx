@@ -29,7 +29,9 @@ export function WizardHeader({ variant = 'edit' }: WizardHeaderProps) {
   const [publishing, setPublishing] = useState(false);
 
   const ready = isChecklistReady(wiz.checklist, wiz.asset.engine);
-  // AV ack is folded into the checklist via the analyzer store + wizard context.
+  // Editing an already-published asset re-runs the same publish endpoint but
+  // the action reads as an "Update" to the user.
+  const isPublished = wiz.asset.status === 'PUBLISHED';
 
   const handleExit = async () => {
     await wiz.flush();
@@ -46,7 +48,7 @@ export function WizardHeader({ variant = 'edit' }: WizardHeaderProps) {
         method: 'POST',
         body: {},
       });
-      toast.success(t('publishedToast'));
+      toast.success(isPublished ? t('updatedToast') : t('publishedToast'));
       router.push(`/assets/${wiz.asset.slug || wiz.asset.id}`);
     } catch (err) {
       if (ApiError.isApiError(err) && err.code === 'asset.publish_blocked' && err.fields) {
@@ -103,7 +105,13 @@ export function WizardHeader({ variant = 'edit' }: WizardHeaderProps) {
               loading={publishing}
               title={ready ? undefined : t('publishBlocked')}
             >
-              {publishing ? t('publishingCta') : t('publishCta')}
+              {publishing
+                ? isPublished
+                  ? t('updatingCta')
+                  : t('publishingCta')
+                : isPublished
+                  ? t('updateCta')
+                  : t('publishCta')}
             </Button>
           </div>
         </div>
