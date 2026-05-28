@@ -17,11 +17,28 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Upload, FileBox, FolderUp, RefreshCcw, X, Check, Loader2, GripVertical, Trash2 } from 'lucide-react';
+import {
+  Upload,
+  FileBox,
+  FolderUp,
+  RefreshCcw,
+  X,
+  Check,
+  Loader2,
+  GripVertical,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert } from '@/components/ui/alert';
-import { Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalFooter } from '@/components/ui/modal';
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalFooter,
+} from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toaster';
 import { useWizard } from '../wizard-context';
@@ -54,6 +71,7 @@ export function StepFiles() {
   const addToStore = useUploadStore((s) => s.addFiles);
   const cancel = useUploadStore((s) => s.cancel);
   const retry = useUploadStore((s) => s.retry);
+  const dismissByFileId = useUploadStore((s) => s.dismissByFileId);
   // Select stable refs and derive the filtered list in render. A selector
   // that returned `.map().filter()` each call broke Zustand's identity check
   // and caused React error #185 (infinite re-render).
@@ -91,7 +109,9 @@ export function StepFiles() {
 
   const savedTaskFileIds = new Set(tasks.map((tk) => tk.fileId).filter(Boolean) as string[]);
   // Tasks still actively shown (not yet reflected as a saved file row).
-  const activeTasks = tasks.filter((tk) => !tk.fileId || !orderedSaved.some((f) => f.id === tk.fileId));
+  const activeTasks = tasks.filter(
+    (tk) => !tk.fileId || !orderedSaved.some((f) => f.id === tk.fileId),
+  );
 
   const addFiles = (files: File[], stripBase = false) => {
     if (files.some((f) => f.size > LARGE_FILE_WARN_BYTES)) {
@@ -138,6 +158,11 @@ export function StepFiles() {
     try {
       await fetcher(`/files/${deleteTarget.id}`, { method: 'DELETE' });
       setOrderedSaved((cur) => cur.filter((f) => f.id !== deleteTarget.id));
+      // Drop the finished upload task for this file too. Otherwise it lingers in
+      // the global store and re-surfaces as an active row the instant the saved
+      // file leaves orderedSaved — which is why deleted files appeared to stay
+      // until a reload cleared the in-memory store.
+      dismissByFileId(deleteTarget.id);
       toast.success('File deleted');
       void wiz.refresh();
     } catch (err) {
@@ -159,13 +184,14 @@ export function StepFiles() {
 
   const visibleSaved = orderedSaved.filter((f) => !savedTaskFileIds.has(f.id) || true);
   const totalBytes =
-    visibleSaved.reduce((a, f) => a + f.bytes, 0) + activeTasks.reduce((a, tk) => a + tk.totalBytes, 0);
+    visibleSaved.reduce((a, f) => a + f.bytes, 0) +
+    activeTasks.reduce((a, tk) => a + tk.totalBytes, 0);
   const totalCount = visibleSaved.length + activeTasks.length;
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-h2 text-ink tracking-[-0.01em] mb-1">{t('title')}</h2>
+        <h2 className="mb-1 font-display text-h2 tracking-[-0.01em] text-ink">{t('title')}</h2>
         <p className="text-body-sm text-ink-3">{t('subtitle')}</p>
       </div>
 
@@ -182,8 +208,8 @@ export function StepFiles() {
           if (files.length) addFiles(files);
         }}
         className={cn(
-          'rounded-[16px] border-2 border-dashed bg-surface-muted/40 p-8 text-center transition-colors duration-120',
-          dragging ? 'border-ink bg-surface-muted/70' : 'border-line',
+          'bg-surface-muted/40 rounded-[16px] border-2 border-dashed p-8 text-center transition-colors duration-120',
+          dragging ? 'bg-surface-muted/70 border-ink' : 'border-line',
         )}
       >
         <Upload className="mx-auto h-7 w-7 text-ink-3" strokeWidth={2.25} />
@@ -236,7 +262,7 @@ export function StepFiles() {
       </div>
 
       {totalCount > 0 ? (
-        <div className="rounded-[14px] border border-line bg-surface overflow-hidden">
+        <div className="overflow-hidden rounded-[14px] border border-line bg-surface">
           {/* In-flight uploads (not yet persisted) — not reorderable. */}
           {activeTasks.length > 0 ? (
             <ul className="divide-y divide-line">
@@ -255,8 +281,16 @@ export function StepFiles() {
           {/* Saved files — drag to reorder, gear/trash to delete. */}
           {visibleSaved.length > 0 ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={visibleSaved.map((f) => f.id)} strategy={verticalListSortingStrategy}>
-                <ul className={cn('divide-y divide-line', activeTasks.length > 0 && 'border-t border-line')}>
+              <SortableContext
+                items={visibleSaved.map((f) => f.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <ul
+                  className={cn(
+                    'divide-y divide-line',
+                    activeTasks.length > 0 && 'border-t border-line',
+                  )}
+                >
                   {visibleSaved.map((f) => (
                     <SavedRow
                       key={f.id}
@@ -270,7 +304,7 @@ export function StepFiles() {
             </DndContext>
           ) : null}
 
-          <div className="flex items-center justify-between border-t border-line px-4 py-2.5 text-caption text-ink-3 geist-tnum">
+          <div className="geist-tnum flex items-center justify-between border-t border-line px-4 py-2.5 text-caption text-ink-3">
             <span>{totalCount} files</span>
             <span>{t('totalBytes', { size: formatBytes(totalBytes, locale) })}</span>
           </div>
@@ -278,17 +312,19 @@ export function StepFiles() {
       ) : null}
 
       {visibleSaved.length > 1 ? (
-        <p className="text-caption text-ink-3">Drag the handle to reorder how files appear on the asset page.</p>
+        <p className="text-caption text-ink-3">
+          Drag the handle to reorder how files appear on the asset page.
+        </p>
       ) : null}
 
-      <label className="inline-flex items-start gap-3 p-3 rounded-[12px] border border-line cursor-pointer hover:border-ink/40 transition-colors duration-120 max-w-[640px]">
+      <label className="hover:border-ink/40 inline-flex max-w-[640px] cursor-pointer items-start gap-3 rounded-[12px] border border-line p-3 transition-colors duration-120">
         <Checkbox
           checked={wiz.latestVersion.requiresEmptyProject}
           onCheckedChange={(c) => wiz.patch({ requiresEmptyProject: c === true })}
         />
         <div>
           <p className="text-[14px] font-medium text-ink">{t('requiresEmptyProjectLabel')}</p>
-          <p className="text-caption text-ink-3 mt-0.5">{t('requiresEmptyProjectHint')}</p>
+          <p className="mt-0.5 text-caption text-ink-3">{t('requiresEmptyProjectHint')}</p>
         </div>
       </label>
 
@@ -320,28 +356,33 @@ function SavedRow({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn('p-3 flex items-center gap-3 bg-surface', isDragging && 'opacity-70 shadow-2 rounded-[10px]')}
+      className={cn(
+        'flex items-center gap-3 bg-surface p-3',
+        isDragging && 'rounded-[10px] opacity-70 shadow-2',
+      )}
     >
       <button
         {...attributes}
         {...listeners}
         type="button"
         aria-label="Drag to reorder"
-        className="cursor-grab active:cursor-grabbing text-ink-3 hover:text-ink touch-none"
+        className="cursor-grab touch-none text-ink-3 hover:text-ink active:cursor-grabbing"
       >
         <GripVertical className="h-4 w-4" strokeWidth={2.25} />
       </button>
       <div className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-brand-green-50 text-brand-green">
         <Check className="h-4 w-4" strokeWidth={2.5} />
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[13.5px] font-medium text-ink truncate" title={file.relativePath}>
+          <span className="truncate text-[13.5px] font-medium text-ink" title={file.relativePath}>
             {name}
           </span>
-          <span className="text-caption text-ink-3 geist-tnum shrink-0">{formatBytes(file.bytes, locale)}</span>
+          <span className="geist-tnum shrink-0 text-caption text-ink-3">
+            {formatBytes(file.bytes, locale)}
+          </span>
         </div>
-        <p className="mt-1 text-caption text-brand-green font-medium inline-flex items-center gap-1">
+        <p className="mt-1 inline-flex items-center gap-1 text-caption font-medium text-brand-green">
           <Check className="h-3 w-3" strokeWidth={2.5} /> Uploaded
         </p>
       </div>
@@ -349,7 +390,7 @@ function SavedRow({
         type="button"
         onClick={onDelete}
         aria-label="Delete file"
-        className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-ink-3 hover:bg-brand-red-50 hover:text-brand-red transition-colors shrink-0"
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] text-ink-3 transition-colors hover:bg-brand-red-50 hover:text-brand-red"
       >
         <Trash2 className="h-4 w-4" strokeWidth={2.25} />
       </button>
@@ -368,39 +409,46 @@ function TaskRow({
   onCancel: () => void;
   onRetry: () => void;
 }) {
-  const pct = task.totalBytes ? Math.min(100, Math.round((task.bytesUploaded / task.totalBytes) * 100)) : 0;
+  const pct = task.totalBytes
+    ? Math.min(100, Math.round((task.bytesUploaded / task.totalBytes) * 100))
+    : 0;
   const isDone = task.status === 'analyzing' || task.status === 'ready';
   const isFailed = task.status === 'failed' || task.status === 'cancelled';
   return (
-    <li className="p-3 flex items-center gap-3">
+    <li className="flex items-center gap-3 p-3">
       <div className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-surface-muted text-ink-2">
         <FileBox className="h-4 w-4" strokeWidth={2.25} />
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[13.5px] font-medium text-ink truncate">{task.input.relativePath}</span>
-          <span className="text-caption text-ink-3 geist-tnum shrink-0">
+          <span className="truncate text-[13.5px] font-medium text-ink">
+            {task.input.relativePath}
+          </span>
+          <span className="geist-tnum shrink-0 text-caption text-ink-3">
             {formatBytes(task.totalBytes, locale)}
             {task.status === 'uploading' ? ` · ${pct}%` : ''}
           </span>
         </div>
-        <div className="mt-1.5 h-1 rounded-full bg-line overflow-hidden">
+        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-line">
           <div
-            className={cn('h-full transition-all duration-200', isFailed ? 'bg-brand-red/70' : isDone ? 'bg-brand-green' : 'bg-brand-blue')}
+            className={cn(
+              'h-full transition-all duration-200',
+              isFailed ? 'bg-brand-red/70' : isDone ? 'bg-brand-green' : 'bg-brand-blue',
+            )}
             style={{ width: `${isDone ? 100 : pct}%` }}
           />
         </div>
         <div className="mt-1.5 flex items-center gap-2 text-caption text-ink-3">
           <TaskStatusPill status={task.status} />
-          {task.error ? <span className="text-brand-red truncate">· {task.error}</span> : null}
+          {task.error ? <span className="truncate text-brand-red">· {task.error}</span> : null}
         </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex shrink-0 items-center gap-1">
         {task.status === 'failed' ? (
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-ink-2 hover:bg-surface-muted hover:text-ink transition-colors"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-ink-2 transition-colors hover:bg-surface-muted hover:text-ink"
             aria-label="Retry"
           >
             <RefreshCcw className="h-4 w-4" strokeWidth={2.25} />
@@ -409,7 +457,7 @@ function TaskRow({
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-ink-2 hover:bg-surface-muted hover:text-ink transition-colors"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-ink-2 transition-colors hover:bg-surface-muted hover:text-ink"
           aria-label="Remove"
         >
           <X className="h-4 w-4" strokeWidth={2.25} />
@@ -422,7 +470,7 @@ function TaskRow({
 function TaskStatusPill({ status }: { status: UploadStatus }) {
   if (status === 'ready' || status === 'analyzing') {
     return (
-      <span className="inline-flex items-center gap-1 text-brand-green font-medium">
+      <span className="inline-flex items-center gap-1 font-medium text-brand-green">
         <Check className="h-3 w-3" strokeWidth={2.25} />
         Uploaded
       </span>
@@ -430,7 +478,7 @@ function TaskStatusPill({ status }: { status: UploadStatus }) {
   }
   if (status === 'uploading') {
     return (
-      <span className="inline-flex items-center gap-1 text-brand-blue font-medium">
+      <span className="inline-flex items-center gap-1 font-medium text-brand-blue">
         <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2.25} />
         Uploading
       </span>
@@ -460,8 +508,8 @@ function DeleteFileModal({
         <ModalHeader>
           <ModalTitle>Delete this file?</ModalTitle>
           <ModalDescription>
-            This permanently removes <span className="font-medium text-ink">{name}</span> from the asset, including
-            from S3. This can&apos;t be undone. Type the file name to confirm.
+            This permanently removes <span className="font-medium text-ink">{name}</span> from the
+            asset, including from S3. This can&apos;t be undone. Type the file name to confirm.
           </ModalDescription>
         </ModalHeader>
         <Input
