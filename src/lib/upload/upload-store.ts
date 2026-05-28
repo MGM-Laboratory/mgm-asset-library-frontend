@@ -32,14 +32,25 @@ function partSizeFor(fileSize: number): number {
 const fileRegistry = new Map<string, File>();
 const controllers = new Map<string, { ctrl: AbortController; xhrs: Set<XMLHttpRequest> }>();
 
+/** Async getter for the *current* access token. See setAuthProvider. */
+export type AccessTokenProvider = () => Promise<string | undefined>;
+
 interface UploadStoreState {
   tasks: Record<string, UploadTask>;
   /** Order of task ids for stable rendering. */
   order: string[];
-  /** Auth context pushed by <UploadAuthBridge/> so the runner can call the API. */
-  accessToken?: string;
+  /**
+   * Async getter the upload runner calls on every request. Holding a getter
+   * (not a cached string) is what fixes the long-upload 401: a 300 MB upload
+   * can easily outlive Keycloak's 5 min access-token TTL, and the
+   * `complete` call at the end has to use whatever token is current *then*,
+   * not the one that was current when the upload started. The getter is
+   * supplied by <UploadDock/> via `setAuthProvider`.
+   */
+  tokenProvider?: AccessTokenProvider;
   locale: LocaleCode;
-  setAuth: (accessToken: string | undefined, locale: LocaleCode) => void;
+  /** Register the token getter + locale. Replaces the old setAuth cache. */
+  setAuthProvider: (provider: AccessTokenProvider | undefined, locale: LocaleCode) => void;
   addFiles: (
     assetId: string,
     versionId: string,
@@ -53,6 +64,8 @@ interface UploadStoreState {
   dismissByFileId: (fileId: string) => void;
   /** Clear all terminal tasks (ready/cancelled/failed). */
   clearFinished: () => void;
+  /** Test-only: resolve the token via the registered provider. */
+  __resolveAccessToken: () => Promise<string | undefined>;
 }
 
 function cryptoRandomId(): string {
@@ -68,12 +81,33 @@ export const useUploadStore = create<UploadStoreState>((set, get) => {
       return { tasks: { ...s.tasks, [id]: { ...cur, ...p } } };
     });
 
-  const authedFetch = <T = unknown>(
+  const resolveAccessToken = async (): Promise<string | undefined> => {
+    const provider = get().tokenProvider;
+    if (!provider) return undefined;
+    try {
+      return await provider();
+    } catch {
+      return undefined;
+    }
+  };
+
+  const authedFetch = async <T = unknown>(
     path: string,
     init: Parameters<typeof apiFetch>[1] = {},
   ): Promise<T> => {
-    const { accessToken, locale } = get();
-    return apiFetch<T>(path, { accessToken, locale, ...init });
+    const { locale, tokenProvider } = get();
+    // Resolve once up-front (so the Bearer reflects the latest token), and
+    // hand the same getter to apiFetch as a 401-retry refresher. Together this
+    // gives long-running uploads two chances to land their tail-end requests
+    // with a valid token: a fresh one at send-time, and a forced refresh + one
+    // retry if the token expired mid-flight.
+    const accessToken = await resolveAccessToken();
+    return apiFetch<T>(path, {
+      accessToken,
+      locale,
+      tokenRefresher: tokenProvider,
+      ...init,
+    });
   };
 
   async function runTask(task: UploadTask): Promise<void> {
@@ -219,7 +253,8 @@ export const useUploadStore = create<UploadStoreState>((set, get) => {
     tasks: {},
     order: [],
     locale: 'en',
-    setAuth: (accessToken, locale) => set({ accessToken, locale }),
+    setAuthProvider: (provider, locale) => set({ tokenProvider: provider, locale }),
+    __resolveAccessToken: () => resolveAccessToken(),
 
     addFiles: (assetId, versionId, items) => {
       const created: UploadTask[] = items.map((it) => {

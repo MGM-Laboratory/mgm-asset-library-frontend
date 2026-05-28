@@ -43,8 +43,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale} className={fontVariables}>
-      <body className="font-sans bg-bg text-ink antialiased">
-        <SessionProvider>
+      <body className="bg-bg font-sans text-ink antialiased">
+        {/*
+          Keycloak's default access-token TTL is 5 min and the backend's
+          KeycloakAuthGuard verifies expiry on every request. Without polling,
+          useSession() returns whatever token was minted at sign-in — every
+          fetch after ~5 min of idle would 401. Refetching every 4 min (and on
+          window focus) forces the Auth.js JWT callback to run the refresh
+          grant ahead of expiry, keeping the in-memory session token fresh.
+        */}
+        <SessionProvider refetchInterval={4 * 60} refetchOnWindowFocus>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <QueryProvider>
               <PrimaryButtonGuard>
