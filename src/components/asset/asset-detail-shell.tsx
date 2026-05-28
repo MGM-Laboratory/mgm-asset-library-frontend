@@ -75,11 +75,15 @@ export function AssetDetailShell({
     }
     // Owner-curated gallery from the publish wizard (image / video / audio / 3d).
     for (const m of asset.previewMedia ?? []) {
+      if (m.visibility === 'hidden') continue; // never surfaced
       items.push({
         id: m.id,
         kind: m.kind,
         url: m.viewUrl,
+        fullUrl: m.originalUrl ?? m.viewUrl,
         label: m.label,
+        blur: m.visibility === 'blur',
+        warning: m.warning,
       });
     }
     // Anything derivable from the asset's actual package files (e.g. a GLB

@@ -48,11 +48,17 @@ export async function apiFetch<T = unknown>(path: string, init: ApiFetchInit = {
   const url = buildUrl(path, query);
 
   const finalHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
     'X-Request-Id': requestId,
     ...(headers as Record<string, string> | undefined),
   };
+  // Only advertise a JSON body when we actually send one. Fastify rejects a
+  // request that has `Content-Type: application/json` but an empty body
+  // ("Body cannot be empty…"), which broke every no-body POST (archive,
+  // restore, delete, publish, etc.).
+  if (body !== undefined && !('Content-Type' in finalHeaders)) {
+    finalHeaders['Content-Type'] = 'application/json';
+  }
   if (locale) finalHeaders['Accept-Language'] = locale;
   if (accessToken) finalHeaders['Authorization'] = `Bearer ${accessToken}`;
   if (idempotencyKey) finalHeaders['Idempotency-Key'] = idempotencyKey;

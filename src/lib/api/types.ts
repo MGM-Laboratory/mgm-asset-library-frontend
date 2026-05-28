@@ -196,13 +196,22 @@ export interface AssetVersionPayload {
   requiresEmptyProject: boolean;
 }
 
+export type PreviewMediaVisibility = 'visible' | 'blur' | 'hidden';
+
 export interface PreviewMediaItem {
   id: string;
   kind: 'image' | 'video' | 'audio' | '3d';
   key: string;
+  /** Compressed display variant key (images only). */
+  displayKey?: string;
   label: string;
+  /** Fast display URL (compressed if available). */
   viewUrl: string;
+  /** Full-resolution URL for click-to-enlarge. */
+  originalUrl?: string;
   mime?: string;
+  visibility?: PreviewMediaVisibility;
+  warning?: string;
 }
 
 export interface AssetDetail {

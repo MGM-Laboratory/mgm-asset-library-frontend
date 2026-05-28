@@ -2,92 +2,143 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Upload, FileBox, FolderUp, RefreshCcw, X, Check, Loader2 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Upload, FileBox, FolderUp, RefreshCcw, X, Check, Loader2, GripVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert } from '@/components/ui/alert';
+import { Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalFooter } from '@/components/ui/modal';
+import { Input } from '@/components/ui/input';
+import { toast } from '@/components/ui/toaster';
 import { useWizard } from '../wizard-context';
-import { useUploader } from '@/lib/upload/use-uploader';
+import { useAuthedFetch } from '@/lib/api/client';
+import { useUploadStore, selectTasksFor, LARGE_FILE_WARN_BYTES } from '@/lib/upload/upload-store';
 import { formatBytes } from '@/lib/format';
 import type { LocaleCode } from '@/lib/api/types';
 import type { UploadStatus, UploadTask } from '@/lib/upload/types';
 import { cn } from '@/lib/utils';
 
-type DisplayRow =
-  | {
-      kind: 'task';
-      id: string;
-      relativePath: string;
-      bytes: number;
-      status: UploadStatus;
-      progress: number;
-      task: UploadTask;
-      error?: string;
-    }
-  | {
-      kind: 'saved';
-      id: string;
-      relativePath: string;
-      bytes: number;
-    };
+interface SavedFile {
+  id: string;
+  relativePath: string;
+  bytes: number;
+}
 
 export function StepFiles() {
   const wiz = useWizard();
   const t = useTranslations('publish.files');
   const locale = useLocale() as LocaleCode;
+  const fetcher = useAuthedFetch();
   const fileInput = useRef<HTMLInputElement | null>(null);
   const dirInput = useRef<HTMLInputElement | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SavedFile | null>(null);
 
-  const uploader = useUploader({
-    assetId: wiz.asset.id,
-    versionId: wiz.latestVersion?.id ?? '',
-    onReady: () => {
-      void wiz.refresh();
-    },
-  });
+  const versionId = wiz.latestVersion?.id ?? '';
+  const assetId = wiz.asset.id;
+
+  const addToStore = useUploadStore((s) => s.addFiles);
+  const cancel = useUploadStore((s) => s.cancel);
+  const retry = useUploadStore((s) => s.retry);
+  // In-flight (non-saved) tasks for this version.
+  const tasks = useUploadStore((s) => selectTasksFor(s, assetId, versionId));
+
+  // Saved server files, locally reorderable. Seed from the asset payload; the
+  // user can drag to reorder before persisting.
+  const serverFiles = useMemo<SavedFile[]>(
+    () =>
+      (wiz.latestVersion?.files ?? []).map((f) => ({
+        id: f.id,
+        relativePath: f.relativePath,
+        bytes: Number(f.bytes ?? 0),
+      })),
+    [wiz.latestVersion?.files],
+  );
+  const [orderedSaved, setOrderedSaved] = useState<SavedFile[]>(serverFiles);
+  // Re-seed when the server set changes (new upload finished / reload).
+  const serverIds = serverFiles.map((f) => f.id).join(',');
+  const seededRef = useRef('');
+  if (seededRef.current !== serverIds) {
+    seededRef.current = serverIds;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (orderedSaved.map((f) => f.id).join(',') !== serverIds) setOrderedSaved(serverFiles);
+  }
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  const savedTaskFileIds = new Set(tasks.map((tk) => tk.fileId).filter(Boolean) as string[]);
+  // Tasks still actively shown (not yet reflected as a saved file row).
+  const activeTasks = tasks.filter((tk) => !tk.fileId || !orderedSaved.some((f) => f.id === tk.fileId));
 
   const addFiles = (files: File[], stripBase = false) => {
+    if (files.some((f) => f.size > LARGE_FILE_WARN_BYTES)) {
+      toast.info('Large upload', {
+        description:
+          'One or more files are over 2 GB. The upload will continue in the background — you can keep editing while it finishes.',
+      });
+    }
     const items = files.map((f) => {
       const raw = (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name;
       const path = raw.replace(/\\/g, '/');
       const relativePath = stripBase ? path.split('/').slice(1).join('/') || path : path;
       return { file: f, relativePath };
     });
-    uploader.addFiles(items);
+    addToStore(assetId, versionId, items);
   };
 
-  const rows = useMemo<DisplayRow[]>(() => {
-    const taskByFileId = new Map<string, UploadTask>();
-    const taskRows: DisplayRow[] = [];
-    for (const task of uploader.tasks) {
-      if (task.fileId) taskByFileId.set(task.fileId, task);
-      taskRows.push({
-        kind: 'task',
-        id: task.id,
-        relativePath: task.input.relativePath,
-        bytes: task.totalBytes,
-        status: task.status,
-        progress: task.totalBytes
-          ? Math.min(100, Math.round((task.bytesUploaded / task.totalBytes) * 100))
-          : 0,
-        task,
-        error: task.error ?? undefined,
+  const persistOrder = async (next: SavedFile[]) => {
+    setOrderedSaved(next);
+    try {
+      await fetcher(`/files/versions/${versionId}/reorder`, {
+        method: 'POST',
+        body: { orderedFileIds: next.map((f) => f.id) },
       });
+    } catch (err) {
+      toast.error('Could not save order', {
+        description: err instanceof Error ? err.message : String(err),
+      });
+      setOrderedSaved(serverFiles);
     }
-    // Already-saved server files that aren't already represented by an
-    // in-flight task. These are persisted across reloads so the user can see
-    // exactly what's been uploaded so far.
-    const saved: DisplayRow[] = (wiz.latestVersion?.files ?? [])
-      .filter((f) => !taskByFileId.has(f.id))
-      .map((f) => ({
-        kind: 'saved' as const,
-        id: f.id,
-        relativePath: f.relativePath,
-        bytes: Number(f.bytes ?? 0),
-      }));
-    return [...taskRows, ...saved];
-  }, [uploader.tasks, wiz.latestVersion?.files]);
+  };
+
+  const onDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = orderedSaved.findIndex((f) => f.id === active.id);
+    const newIdx = orderedSaved.findIndex((f) => f.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    void persistOrder(arrayMove(orderedSaved, oldIdx, newIdx));
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await fetcher(`/files/${deleteTarget.id}`, { method: 'DELETE' });
+      setOrderedSaved((cur) => cur.filter((f) => f.id !== deleteTarget.id));
+      toast.success('File deleted');
+      void wiz.refresh();
+    } catch (err) {
+      toast.error('Could not delete file', {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
 
   if (!wiz.latestVersion) {
     return (
@@ -97,7 +148,10 @@ export function StepFiles() {
     );
   }
 
-  const totalBytes = rows.reduce((acc, r) => acc + r.bytes, 0);
+  const visibleSaved = orderedSaved.filter((f) => !savedTaskFileIds.has(f.id) || true);
+  const totalBytes =
+    visibleSaved.reduce((a, f) => a + f.bytes, 0) + activeTasks.reduce((a, tk) => a + tk.totalBytes, 0);
+  const totalCount = visibleSaved.length + activeTasks.length;
 
   return (
     <div className="space-y-6">
@@ -142,6 +196,9 @@ export function StepFiles() {
             {t('browseFolder')}
           </Button>
         </div>
+        <p className="mt-3 text-caption text-ink-4">
+          Any file size is supported. Uploads continue in the background while you edit.
+        </p>
         <input
           ref={fileInput}
           type="file"
@@ -169,28 +226,50 @@ export function StepFiles() {
         />
       </div>
 
-      {rows.length > 0 ? (
+      {totalCount > 0 ? (
         <div className="rounded-[14px] border border-line bg-surface overflow-hidden">
-          <ul className="divide-y divide-line">
-            {rows.map((row) =>
-              row.kind === 'task' ? (
+          {/* In-flight uploads (not yet persisted) — not reorderable. */}
+          {activeTasks.length > 0 ? (
+            <ul className="divide-y divide-line">
+              {activeTasks.map((task) => (
                 <TaskRow
-                  key={row.id}
-                  row={row}
+                  key={task.id}
+                  task={task}
                   locale={locale}
-                  onCancel={() => uploader.cancel(row.task.id)}
-                  onRetry={() => uploader.retry(row.task.id)}
+                  onCancel={() => cancel(task.id)}
+                  onRetry={() => retry(task.id)}
                 />
-              ) : (
-                <SavedRow key={row.id} row={row} locale={locale} />
-              ),
-            )}
-          </ul>
+              ))}
+            </ul>
+          ) : null}
+
+          {/* Saved files — drag to reorder, gear/trash to delete. */}
+          {visibleSaved.length > 0 ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={visibleSaved.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                <ul className={cn('divide-y divide-line', activeTasks.length > 0 && 'border-t border-line')}>
+                  {visibleSaved.map((f) => (
+                    <SavedRow
+                      key={f.id}
+                      file={f}
+                      locale={locale}
+                      onDelete={() => setDeleteTarget(f)}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
+          ) : null}
+
           <div className="flex items-center justify-between border-t border-line px-4 py-2.5 text-caption text-ink-3 geist-tnum">
-            <span>{rows.length} files</span>
+            <span>{totalCount} files</span>
             <span>{t('totalBytes', { size: formatBytes(totalBytes, locale) })}</span>
           </div>
         </div>
+      ) : null}
+
+      {visibleSaved.length > 1 ? (
+        <p className="text-caption text-ink-3">Drag the handle to reorder how files appear on the asset page.</p>
       ) : null}
 
       <label className="inline-flex items-start gap-3 p-3 rounded-[12px] border border-line cursor-pointer hover:border-ink/40 transition-colors duration-120 max-w-[640px]">
@@ -203,24 +282,86 @@ export function StepFiles() {
           <p className="text-caption text-ink-3 mt-0.5">{t('requiresEmptyProjectHint')}</p>
         </div>
       </label>
+
+      {deleteTarget ? (
+        <DeleteFileModal
+          file={deleteTarget}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      ) : null}
     </div>
   );
 }
 
+function SavedRow({
+  file,
+  locale,
+  onDelete,
+}: {
+  file: SavedFile;
+  locale: LocaleCode;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: file.id,
+  });
+  const name = file.relativePath.split('/').pop() || file.relativePath;
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn('p-3 flex items-center gap-3 bg-surface', isDragging && 'opacity-70 shadow-2 rounded-[10px]')}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        type="button"
+        aria-label="Drag to reorder"
+        className="cursor-grab active:cursor-grabbing text-ink-3 hover:text-ink touch-none"
+      >
+        <GripVertical className="h-4 w-4" strokeWidth={2.25} />
+      </button>
+      <div className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-brand-green-50 text-brand-green">
+        <Check className="h-4 w-4" strokeWidth={2.5} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[13.5px] font-medium text-ink truncate" title={file.relativePath}>
+            {name}
+          </span>
+          <span className="text-caption text-ink-3 geist-tnum shrink-0">{formatBytes(file.bytes, locale)}</span>
+        </div>
+        <p className="mt-1 text-caption text-brand-green font-medium inline-flex items-center gap-1">
+          <Check className="h-3 w-3" strokeWidth={2.5} /> Uploaded
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label="Delete file"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-ink-3 hover:bg-brand-red-50 hover:text-brand-red transition-colors shrink-0"
+      >
+        <Trash2 className="h-4 w-4" strokeWidth={2.25} />
+      </button>
+    </li>
+  );
+}
+
 function TaskRow({
-  row,
+  task,
   locale,
   onCancel,
   onRetry,
 }: {
-  row: Extract<DisplayRow, { kind: 'task' }>;
+  task: UploadTask;
   locale: LocaleCode;
   onCancel: () => void;
   onRetry: () => void;
 }) {
-  const t = useTranslations('publish.files');
-  const isDone = row.status === 'analyzing' || row.status === 'ready';
-  const isFailed = row.status === 'failed' || row.status === 'cancelled';
+  const pct = task.totalBytes ? Math.min(100, Math.round((task.bytesUploaded / task.totalBytes) * 100)) : 0;
+  const isDone = task.status === 'analyzing' || task.status === 'ready';
+  const isFailed = task.status === 'failed' || task.status === 'cancelled';
   return (
     <li className="p-3 flex items-center gap-3">
       <div className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-surface-muted text-ink-2">
@@ -228,33 +369,30 @@ function TaskRow({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[13.5px] font-medium text-ink truncate">{row.relativePath}</span>
+          <span className="text-[13.5px] font-medium text-ink truncate">{task.input.relativePath}</span>
           <span className="text-caption text-ink-3 geist-tnum shrink-0">
-            {formatBytes(row.bytes, locale)}
-            {row.status === 'uploading' ? ` · ${row.progress}%` : ''}
+            {formatBytes(task.totalBytes, locale)}
+            {task.status === 'uploading' ? ` · ${pct}%` : ''}
           </span>
         </div>
         <div className="mt-1.5 h-1 rounded-full bg-line overflow-hidden">
           <div
-            className={cn(
-              'h-full transition-all duration-200',
-              isFailed ? 'bg-brand-red/70' : isDone ? 'bg-brand-green' : 'bg-brand-blue',
-            )}
-            style={{ width: `${isDone ? 100 : row.progress}%` }}
+            className={cn('h-full transition-all duration-200', isFailed ? 'bg-brand-red/70' : isDone ? 'bg-brand-green' : 'bg-brand-blue')}
+            style={{ width: `${isDone ? 100 : pct}%` }}
           />
         </div>
         <div className="mt-1.5 flex items-center gap-2 text-caption text-ink-3">
-          <TaskStatusPill status={row.status} />
-          {row.error ? <span className="text-brand-red truncate">· {row.error}</span> : null}
+          <TaskStatusPill status={task.status} />
+          {task.error ? <span className="text-brand-red truncate">· {task.error}</span> : null}
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        {row.status === 'failed' ? (
+        {task.status === 'failed' ? (
           <button
             type="button"
             onClick={onRetry}
             className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-ink-2 hover:bg-surface-muted hover:text-ink transition-colors"
-            aria-label={t('retry')}
+            aria-label="Retry"
           >
             <RefreshCcw className="h-4 w-4" strokeWidth={2.25} />
           </button>
@@ -263,7 +401,7 @@ function TaskRow({
           type="button"
           onClick={onCancel}
           className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-ink-2 hover:bg-surface-muted hover:text-ink transition-colors"
-          aria-label={t('remove')}
+          aria-label="Remove"
         >
           <X className="h-4 w-4" strokeWidth={2.25} />
         </button>
@@ -272,36 +410,7 @@ function TaskRow({
   );
 }
 
-function SavedRow({
-  row,
-  locale,
-}: {
-  row: Extract<DisplayRow, { kind: 'saved' }>;
-  locale: LocaleCode;
-}) {
-  return (
-    <li className="p-3 flex items-center gap-3">
-      <div className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-brand-green-50 text-brand-green">
-        <Check className="h-4 w-4" strokeWidth={2.5} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[13.5px] font-medium text-ink truncate">{row.relativePath}</span>
-          <span className="text-caption text-ink-3 geist-tnum shrink-0">
-            {formatBytes(row.bytes, locale)}
-          </span>
-        </div>
-        <div className="mt-1.5 h-1 rounded-full bg-brand-green overflow-hidden" />
-        <p className="mt-1.5 text-caption text-brand-green font-medium inline-flex items-center gap-1">
-          <Check className="h-3 w-3" strokeWidth={2.5} /> Uploaded
-        </p>
-      </div>
-    </li>
-  );
-}
-
 function TaskStatusPill({ status }: { status: UploadStatus }) {
-  const t = useTranslations('publish.files');
   if (status === 'ready' || status === 'analyzing') {
     return (
       <span className="inline-flex items-center gap-1 text-brand-green font-medium">
@@ -318,11 +427,59 @@ function TaskStatusPill({ status }: { status: UploadStatus }) {
       </span>
     );
   }
-  const key =
-    status === 'queued'
-      ? 'statusQueued'
-      : status === 'failed'
-        ? 'statusFailed'
-        : 'statusCancelled';
-  return <span>{t(key as 'statusQueued')}</span>;
+  if (status === 'failed') return <span className="text-brand-red">Failed</span>;
+  if (status === 'cancelled') return <span>Cancelled</span>;
+  return <span>Queued</span>;
+}
+
+function DeleteFileModal({
+  file,
+  onCancel,
+  onConfirm,
+}: {
+  file: SavedFile;
+  onCancel: () => void;
+  onConfirm: () => void | Promise<void>;
+}) {
+  const name = file.relativePath.split('/').pop() || file.relativePath;
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const ok = typed.trim() === name;
+  return (
+    <Modal open onOpenChange={(o) => !o && onCancel()}>
+      <ModalContent size="sm">
+        <ModalHeader>
+          <ModalTitle>Delete this file?</ModalTitle>
+          <ModalDescription>
+            This permanently removes <span className="font-medium text-ink">{name}</span> from the asset, including
+            from S3. This can&apos;t be undone. Type the file name to confirm.
+          </ModalDescription>
+        </ModalHeader>
+        <Input
+          autoFocus
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          placeholder={name}
+          aria-label="Type the file name to confirm"
+        />
+        <ModalFooter>
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            disabled={!ok || busy}
+            loading={busy}
+            onClick={async () => {
+              setBusy(true);
+              await onConfirm();
+              setBusy(false);
+            }}
+          >
+            Delete file
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
 }

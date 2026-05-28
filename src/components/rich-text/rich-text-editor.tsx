@@ -243,8 +243,19 @@ export function RichTextEditor({
         onGif={() => setGifOpen(true)}
       />
       <div
-        className="relative overflow-y-auto"
+        className="relative overflow-y-auto cursor-text"
         style={{ minHeight, maxHeight }}
+        onMouseDown={(e) => {
+          // ProseMirror only fills the height of its own content, so a click
+          // in the empty space below the text would otherwise do nothing and
+          // the user had to click twice. If the click misses the editable
+          // element, focus it (at the end) ourselves.
+          const target = e.target as HTMLElement;
+          if (!target.closest('.ProseMirror')) {
+            e.preventDefault();
+            editor.commands.focus('end');
+          }
+        }}
       >
         <EditorContent editor={editor} />
         {busyUploading ? (
