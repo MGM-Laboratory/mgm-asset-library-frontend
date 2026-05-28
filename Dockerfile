@@ -70,9 +70,14 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY --from=build /app/.next/standalone ./
-COPY --from=build /app/.next/static ./.next/static
-COPY --from=build /app/public ./public
+# Copy as the runtime user so Next.js can write its image-optimization cache.
+# Without --chown the standalone output lands as root:root and the `node`
+# user can't mkdir /app/.next/cache, which broke every <Image> request with
+# `EACCES: permission denied, mkdir '/app/.next/cache'`.
+COPY --from=build --chown=node:node /app/.next/standalone ./
+COPY --from=build --chown=node:node /app/.next/static ./.next/static
+COPY --from=build --chown=node:node /app/public ./public
+RUN mkdir -p /app/.next/cache && chown -R node:node /app/.next
 USER node
 EXPOSE 3000
 CMD ["node", "server.js"]
