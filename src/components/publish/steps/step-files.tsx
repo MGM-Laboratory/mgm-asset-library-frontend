@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toaster';
 import { useWizard } from '../wizard-context';
 import { useAuthedFetch } from '@/lib/api/client';
-import { useUploadStore, selectTasksFor, LARGE_FILE_WARN_BYTES } from '@/lib/upload/upload-store';
+import { useUploadStore, LARGE_FILE_WARN_BYTES } from '@/lib/upload/upload-store';
 import { formatBytes } from '@/lib/format';
 import type { LocaleCode } from '@/lib/api/types';
 import type { UploadStatus, UploadTask } from '@/lib/upload/types';
@@ -54,8 +54,17 @@ export function StepFiles() {
   const addToStore = useUploadStore((s) => s.addFiles);
   const cancel = useUploadStore((s) => s.cancel);
   const retry = useUploadStore((s) => s.retry);
-  // In-flight (non-saved) tasks for this version.
-  const tasks = useUploadStore((s) => selectTasksFor(s, assetId, versionId));
+  // Select stable refs and derive the filtered list in render. A selector
+  // that returned `.map().filter()` each call broke Zustand's identity check
+  // and caused React error #185 (infinite re-render).
+  const tasksMap = useUploadStore((s) => s.tasks);
+  const order = useUploadStore((s) => s.order);
+  const tasks = order
+    .map((id) => tasksMap[id])
+    .filter(
+      (t): t is NonNullable<typeof t> =>
+        !!t && t.input.assetId === assetId && t.input.versionId === versionId,
+    );
 
   // Saved server files, locally reorderable. Seed from the asset payload; the
   // user can drag to reorder before persisting.
