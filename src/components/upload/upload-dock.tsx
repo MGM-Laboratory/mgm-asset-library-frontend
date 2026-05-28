@@ -23,7 +23,16 @@ export function UploadDock() {
   const { data: session } = useSession();
   const locale = useLocale() as LocaleCode;
   const setAuth = useUploadStore((s) => s.setAuth);
-  const tasks = useUploadStore((s) => s.order.map((id) => s.tasks[id]).filter(Boolean) as UploadTask[]);
+  // Select the two stable refs separately so Zustand's identity check sees a
+  // stable subscription when nothing changed. A `.map().filter()` *inside*
+  // the selector returned a new array every render → React error #185
+  // ("Maximum update depth exceeded") → /(app)/ pages crashed into
+  // error.tsx ("We hit a snag"). Derive the list after the selectors.
+  const tasksMap = useUploadStore((s) => s.tasks);
+  const order = useUploadStore((s) => s.order);
+  const tasks = order
+    .map((id) => tasksMap[id])
+    .filter((t): t is UploadTask => !!t);
   const cancel = useUploadStore((s) => s.cancel);
   const retry = useUploadStore((s) => s.retry);
   const dismiss = useUploadStore((s) => s.dismiss);
