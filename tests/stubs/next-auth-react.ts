@@ -7,6 +7,11 @@ export const useSession = () => ({
   update: vi.fn(),
 });
 
+export const getSession = vi.fn(async () => ({
+  accessToken: 'test',
+  user: { name: 'Test', email: 't@t.io' },
+}));
+
 export const signIn = vi.fn();
 export const signOut = vi.fn();
 
