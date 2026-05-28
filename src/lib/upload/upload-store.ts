@@ -49,6 +49,8 @@ interface UploadStoreState {
   retry: (taskId: string) => void;
   /** Remove a finished/cancelled/failed task row from the list. */
   dismiss: (taskId: string) => void;
+  /** Remove whichever task finalized to this backend file id (used on delete). */
+  dismissByFileId: (fileId: string) => void;
   /** Clear all terminal tasks (ready/cancelled/failed). */
   clearFinished: () => void;
 }
@@ -100,7 +102,10 @@ export const useUploadStore = create<UploadStoreState>((set, get) => {
         patch(task.id, { status: 'cancelled' });
         return;
       }
-      logger.warn('upload.failed', { id: task.id, err: err instanceof Error ? err.message : String(err) });
+      logger.warn('upload.failed', {
+        id: task.id,
+        err: err instanceof Error ? err.message : String(err),
+      });
       patch(task.id, { status: 'failed', error: err instanceof Error ? err.message : String(err) });
     } finally {
       controllers.delete(task.id);
@@ -170,9 +175,7 @@ export const useUploadStore = create<UploadStoreState>((set, get) => {
         });
       }
     };
-    await Promise.all(
-      Array.from({ length: Math.min(MAX_PARALLEL_PARTS, partCount) }, worker),
-    );
+    await Promise.all(Array.from({ length: Math.min(MAX_PARALLEL_PARTS, partCount) }, worker));
     if (ctrl.signal.aborted) return;
     // ETags are sourced server-side via ListParts — no need to send them.
     await authedFetch('/files/uploads/multipart/complete', {
@@ -263,6 +266,11 @@ export const useUploadStore = create<UploadStoreState>((set, get) => {
       });
     },
 
+    dismissByFileId: (fileId) => {
+      const ids = get().order.filter((id) => get().tasks[id]?.fileId === fileId);
+      for (const id of ids) get().dismiss(id);
+    },
+
     clearFinished: () =>
       set((s) => {
         const terminal = new Set(['ready', 'cancelled', 'failed', 'analyzing']);
@@ -280,13 +288,38 @@ export const useUploadStore = create<UploadStoreState>((set, get) => {
   };
 });
 
+/** The store slice the pure selectors below read. */
+type TaskSlice = Pick<UploadStoreState, 'tasks' | 'order'>;
+
 /** Convenience selector: tasks for a specific asset+version, in order. */
-export function selectTasksFor(
-  state: UploadStoreState,
-  assetId: string,
-  versionId: string,
-): UploadTask[] {
+export function selectTasksFor(state: TaskSlice, assetId: string, versionId: string): UploadTask[] {
   return state.order
     .map((id) => state.tasks[id])
-    .filter((t): t is UploadTask => !!t && t.input.assetId === assetId && t.input.versionId === versionId);
+    .filter(
+      (t): t is UploadTask => !!t && t.input.assetId === assetId && t.input.versionId === versionId,
+    );
+}
+
+// A task whose bytes are fully uploaded and whose AssetFile row is finalized
+// server-side. The post-upload analyzer/AV stages don't change fileCount, so
+// they all count as "done" for the purpose of the publish checklist.
+const UPLOAD_DONE_STATUSES: ReadonlySet<UploadStatus> = new Set<UploadStatus>([
+  'analyzing',
+  'av-scanning',
+  'ready',
+]);
+
+/**
+ * Backend file ids of finished uploads for an asset+version. The wizard watches
+ * this so the "at least 1 file uploaded" checklist item ticks the moment an
+ * upload completes, without a manual reload.
+ */
+export function selectCompletedFileIdsFor(
+  state: TaskSlice,
+  assetId: string,
+  versionId: string,
+): string[] {
+  return selectTasksFor(state, assetId, versionId)
+    .filter((t) => !!t.fileId && UPLOAD_DONE_STATUSES.has(t.status))
+    .map((t) => t.fileId as string);
 }
