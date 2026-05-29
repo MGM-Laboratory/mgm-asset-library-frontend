@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { FilterSection, ChipFilter } from '@/components/filters/filter-section';
 import { TagCombobox } from '@/components/filters/tag-combobox';
 import { useAuthedFetch } from '@/lib/api/client';
-import { queryKeys } from '@/lib/api/queries';
+import { queryKeys, STALE_TIMES } from '@/lib/api/queries';
 import { useUrlState } from '@/lib/hooks/use-url-state';
 import type { Category, Engine, LibrarySort, LocaleCode } from '@/lib/api/types';
 
@@ -34,7 +34,7 @@ export function LibraryFilters() {
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categories(locale),
     queryFn: () => fetcher<Category[]>('/categories', { query: { locale } }),
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIMES.categories,
   });
 
   const q = get('q') ?? '';

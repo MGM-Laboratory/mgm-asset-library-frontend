@@ -45,14 +45,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} className={fontVariables}>
       <body className="bg-bg font-sans text-ink antialiased">
         {/*
-          Keycloak's default access-token TTL is 5 min and the backend's
-          KeycloakAuthGuard verifies expiry on every request. Without polling,
-          useSession() returns whatever token was minted at sign-in — every
-          fetch after ~5 min of idle would 401. Refetching every 4 min (and on
-          window focus) forces the Auth.js JWT callback to run the refresh
-          grant ahead of expiry, keeping the in-memory session token fresh.
+          The Auth.js JWT callback already refreshes the Keycloak access token
+          when it's close to expiry on the next request, and `useAuthedFetch`
+          forces a session refetch via `tokenRefresher` on a single 401 retry.
+          That makes the previous 4-minute polling + window-focus refetch
+          redundant — they were the leading cause of "every tab return feels
+          slow" because every focus event fanned out a /api/auth/session
+          request that blocked any TanStack query depending on the token.
         */}
-        <SessionProvider refetchInterval={4 * 60} refetchOnWindowFocus>
+        <SessionProvider refetchOnWindowFocus={false}>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <QueryProvider>
               <PrimaryButtonGuard>

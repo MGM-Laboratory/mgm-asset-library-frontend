@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { FilterSection, ChipFilter } from './filter-section';
 import { TagCombobox } from './tag-combobox';
 import { useAuthedFetch } from '@/lib/api/client';
-import { queryKeys } from '@/lib/api/queries';
+import { queryKeys, STALE_TIMES } from '@/lib/api/queries';
 import { useUrlState } from '@/lib/hooks/use-url-state';
 import type {
   Category,
@@ -70,12 +70,12 @@ export function SearchFilterSidebar() {
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categories(locale),
     queryFn: () => fetcher<Category[]>('/categories', { query: { locale } }),
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIMES.categories,
   });
   const licensesQuery = useQuery({
     queryKey: queryKeys.licenses(locale),
     queryFn: () => fetcher<LicenseSummary[]>('/licenses', { query: { locale } }),
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIMES.licenses,
   });
 
   const q = get('q') ?? '';

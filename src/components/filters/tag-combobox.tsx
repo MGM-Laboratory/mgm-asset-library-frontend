@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { useAuthedFetch } from '@/lib/api/client';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
-import { queryKeys } from '@/lib/api/queries';
+import { queryKeys, STALE_TIMES } from '@/lib/api/queries';
 import { Badge } from '@/components/ui/badge';
 import type { Tag } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,7 @@ export function TagCombobox({ values, onChange, placeholder }: TagComboboxProps)
     queryKey: queryKeys.tags(debouncedQuery),
     queryFn: () => fetcher<Tag[]>('/tags', { query: { q: debouncedQuery, limit: 8 } }),
     enabled: focused && debouncedQuery.length > 0,
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.tags,
   });
 
   const add = (slug: string) => {

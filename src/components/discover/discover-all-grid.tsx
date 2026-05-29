@@ -7,7 +7,7 @@ import { AssetCard } from '@/components/asset/asset-card';
 import { AssetCardSkeleton } from '@/components/asset/asset-card-skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useAuthedFetch } from '@/lib/api/client';
-import { queryKeys } from '@/lib/api/queries';
+import { queryKeys, STALE_TIMES } from '@/lib/api/queries';
 import { useIntersection } from '@/lib/hooks/use-intersection';
 import { logEvent } from '@/lib/logger.events';
 import type { AssetListPage, Engine, SortOrder } from '@/lib/api/types';
@@ -53,7 +53,7 @@ export function DiscoverAllGrid({ savedIds, ownAssetIds }: DiscoverAllGridProps)
         },
       }),
     getNextPageParam: (last) => (last.pageInfo.hasMore ? (last.pageInfo.nextCursor ?? undefined) : undefined),
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.discover,
   });
 
   const { ref: sentinelRef, isIntersecting } = useIntersection<HTMLDivElement>({ rootMargin: '320px' });

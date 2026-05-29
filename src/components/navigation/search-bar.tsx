@@ -18,7 +18,7 @@ import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { useAuthedFetch } from '@/lib/api/client';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
-import { queryKeys } from '@/lib/api/queries';
+import { queryKeys, STALE_TIMES } from '@/lib/api/queries';
 import { logEvent } from '@/lib/logger.events';
 import type { SearchAssetsResponse, Tag } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
@@ -50,7 +50,7 @@ export function SearchBar({ className }: SearchBarProps) {
     queryKey: queryKeys.searchTags(debouncedQuery),
     queryFn: () => fetcher<Tag[]>('/search/tags', { query: { q: debouncedQuery, limit: 5 } }),
     enabled: open && debouncedQuery.length > 1,
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.search,
   });
 
   const assetsQ = useQuery({
@@ -60,7 +60,7 @@ export function SearchBar({ className }: SearchBarProps) {
         query: { q: debouncedQuery, limit: 5 },
       }),
     enabled: open && debouncedQuery.length > 1,
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.search,
   });
 
   const isFetching = tagsQ.isFetching || assetsQ.isFetching;
