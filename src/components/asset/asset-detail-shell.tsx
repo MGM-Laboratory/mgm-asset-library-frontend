@@ -32,7 +32,6 @@ interface AssetDetailShellProps {
   asset: AssetDetail;
   currentUserId: string;
   isAdmin: boolean;
-  savedIds: Set<string>;
   me?: MeResponse;
 }
 
@@ -40,7 +39,6 @@ export function AssetDetailShell({
   asset,
   currentUserId,
   isAdmin,
-  savedIds,
   me,
 }: AssetDetailShellProps) {
   const meForComments = me;
@@ -154,7 +152,7 @@ export function AssetDetailShell({
                 <CommentsSection asset={asset} me={meForComments} />
               ) : null}
 
-              <RecommendedAssets assetId={asset.id} savedIds={savedIds} />
+              <RecommendedAssets assetId={asset.id} />
             </div>
 
             {/* Right rail */}

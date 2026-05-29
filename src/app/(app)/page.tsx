@@ -6,7 +6,7 @@ import { CategoryRow } from '@/components/discover/category-row';
 import { DiscoverAllGrid } from '@/components/discover/discover-all-grid';
 import { requireSession, fetchMe } from '@/lib/auth/server';
 import { apiFetch } from '@/lib/api/fetcher';
-import type { Category, DiscoverResponse, LibraryPage, LocaleCode } from '@/lib/api/types';
+import type { Category, DiscoverResponse, LocaleCode } from '@/lib/api/types';
 import { logger } from '@/lib/logger';
 
 export const metadata = { title: 'Discover' };
@@ -26,13 +26,13 @@ export default async function DiscoverPage() {
   const me = await fetchMe(session);
   const locale = (await getLocale()) as LocaleCode;
 
-  const [discover, categories, libraryPage] = await Promise.all([
+  const [discover, categories] = await Promise.all([
     safeFetch<DiscoverResponse>(`/discover?locale=${locale}`, session.accessToken, locale),
     safeFetch<Category[]>(`/categories?locale=${locale}`, session.accessToken, locale),
-    safeFetch<LibraryPage>(`/library?limit=100`, session.accessToken, locale),
   ]);
 
-  const savedIds = new Set(libraryPage?.items.map((i) => i.asset.id) ?? []);
+  // Saved (heart) state is hydrated client-side via useSavedIds() in the card
+  // grids, so Discover no longer fetches the full library here.
   // Owner detection: assets whose ownerDisplayName matches the current user's display name.
   // The backend's AssetSummary doesn't carry owner.id; the asset detail does. For Discover
   // we conservatively treat nothing as owned unless the display name matches exactly.
@@ -60,7 +60,6 @@ export default async function DiscoverPage() {
             categoryId={row.categoryId}
             categoryName={row.name}
             assets={row.assets}
-            savedIds={savedIds}
             ownAssetIds={ownAssetIds}
           />
         ))}
@@ -69,7 +68,7 @@ export default async function DiscoverPage() {
           <h2 className="font-display text-h1 text-ink tracking-[-0.015em] mb-5">
             All assets
           </h2>
-          <DiscoverAllGrid savedIds={savedIds} ownAssetIds={ownAssetIds} />
+          <DiscoverAllGrid ownAssetIds={ownAssetIds} />
         </div>
       </div>
     </Container>
