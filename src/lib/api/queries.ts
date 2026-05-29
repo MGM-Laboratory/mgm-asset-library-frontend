@@ -23,6 +23,7 @@ export const queryKeys = {
 
   library: (filters: Record<string, unknown> = {}) => ['library', filters] as const,
   libraryAll: ['library'] as const,
+  savedIds: ['library', 'saved-ids'] as const,
 
   searchAssets: (q: string, filters: Record<string, unknown> = {}) =>
     ['search', 'assets', q, filters] as const,
