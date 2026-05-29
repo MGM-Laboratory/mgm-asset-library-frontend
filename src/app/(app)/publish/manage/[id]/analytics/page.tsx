@@ -4,7 +4,9 @@ import { ArrowLeft } from 'lucide-react';
 import { Container } from '@/components/layout/container';
 import { Card } from '@/components/ui/card';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
-import { AnalyticsCharts } from '@/components/publish/analytics-charts';
+// Recharts is lazy-loaded (client-only) via this wrapper so it never ships in
+// shared chunks. SSR-off is fine: the page is `force-dynamic` and owner-gated.
+import { AnalyticsCharts } from '@/components/publish/analytics-charts.lazy';
 import { requireSession, fetchMe } from '@/lib/auth/server';
 import { apiFetch } from '@/lib/api/fetcher';
 import type { AssetAnalyticsDetail, LocaleCode } from '@/lib/api/types';

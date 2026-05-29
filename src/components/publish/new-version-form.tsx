@@ -10,7 +10,7 @@ import { Field, Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { VersionBadge } from '@/components/asset/version-badge';
-import { RichTextEditor } from '@/components/rich-text/rich-text-editor';
+import { RichTextEditor } from '@/components/rich-text/rich-text-editor.lazy';
 import { useAuthedFetch } from '@/lib/api/client';
 import { toast } from '@/components/ui/toaster';
 import type { AssetDetail, LocaleCode, TipTapDoc } from '@/lib/api/types';

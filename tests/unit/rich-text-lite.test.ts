@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stripDisallowedLiteNodes } from '@/components/rich-text/rich-text-editor';
+import { stripDisallowedLiteNodes } from '@/components/rich-text/lite-nodes';
 import type { TipTapDoc } from '@/lib/api/types';
 
 describe('stripDisallowedLiteNodes', () => {

@@ -43,8 +43,18 @@ import { Input, Field } from '@/components/ui/input';
 import { GifPicker } from './gif-picker';
 import { uploadEditorMedia } from './editor-media-upload';
 import { toast } from '@/components/ui/toaster';
-import type { TipTapDoc, TipTapNode } from '@/lib/api/types';
+import type { TipTapDoc } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
+import {
+  LITE_ALLOWED_NODES,
+  LITE_ALLOWED_MARKS,
+  stripDisallowedLiteNodes,
+} from './lite-nodes';
+
+// Re-exported from the pure `lite-nodes` module so existing import sites that
+// reference these from the editor still resolve. Prefer importing them from
+// `./lite-nodes` directly to keep TipTap out of bundles that only sanitize.
+export { LITE_ALLOWED_NODES, LITE_ALLOWED_MARKS, stripDisallowedLiteNodes };
 
 export type RichTextMode = 'full' | 'lite';
 
@@ -62,24 +72,6 @@ interface RichTextEditorProps {
 
 const FULL_PLACEHOLDER = 'Write the long-form description of your asset…';
 const LITE_PLACEHOLDER = 'Write a comment…';
-
-/**
- * Allowed nodes for Lite mode (comments, release notes). Mirrors backend
- * sanitization. Any disallowed nodes are stripped before submit by the
- * caller via `stripDisallowedLiteNodes`.
- */
-export const LITE_ALLOWED_NODES = new Set([
-  'doc',
-  'paragraph',
-  'text',
-  'hardBreak',
-  'bulletList',
-  'orderedList',
-  'listItem',
-  'codeBlock',
-  'image',
-]);
-export const LITE_ALLOWED_MARKS = new Set(['bold', 'italic', 'code', 'link']);
 
 function buildExtensions(mode: RichTextMode, placeholder: string) {
   const base = [
@@ -620,32 +612,6 @@ function isValidUrl(value: string): boolean {
   } catch {
     return false;
   }
-}
-
-/* =====================================================================
- * Lite sanitization (mirrors backend)
- * ===================================================================== */
-
-export function stripDisallowedLiteNodes(doc: TipTapDoc): TipTapDoc {
-  return {
-    type: 'doc',
-    content: (doc.content ?? [])
-      .map(filterLiteNode)
-      .filter((n): n is NonNullable<typeof n> => n !== null),
-  };
-}
-
-function filterLiteNode(node: TipTapNode): TipTapNode | null {
-  if (!LITE_ALLOWED_NODES.has(node.type)) return null;
-  const marks = node.marks?.filter((m) => LITE_ALLOWED_MARKS.has(m.type));
-  const content = node.content
-    ?.map(filterLiteNode)
-    .filter((n): n is TipTapNode => n !== null);
-  return {
-    ...node,
-    marks: marks?.length ? marks : undefined,
-    content: content?.length ? content : node.content ? [] : undefined,
-  };
 }
 
 // Silence unused — only re-exported for tests
