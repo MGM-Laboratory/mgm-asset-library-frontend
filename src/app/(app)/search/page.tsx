@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/api/fetcher';
 import type { LibraryPage } from '@/lib/api/types';
 
 export const metadata = { title: 'Search' };
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function SearchPage() {
   const session = await requireSession();
