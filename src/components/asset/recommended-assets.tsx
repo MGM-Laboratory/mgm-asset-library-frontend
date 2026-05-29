@@ -6,15 +6,16 @@ import { AssetCard } from './asset-card';
 import { AssetCardSkeleton } from './asset-card-skeleton';
 import { useAuthedFetch } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/queries';
+import { useSavedIds } from '@/lib/hooks/use-saved-ids';
 import type { AssetSummary, LocaleCode } from '@/lib/api/types';
 
 interface RecommendedAssetsProps {
   assetId: string;
-  savedIds: Set<string>;
 }
 
-export function RecommendedAssets({ assetId, savedIds }: RecommendedAssetsProps) {
+export function RecommendedAssets({ assetId }: RecommendedAssetsProps) {
   const fetcher = useAuthedFetch();
+  const savedIds = useSavedIds();
   const locale = useLocale() as LocaleCode;
   const t = useTranslations('asset');
   const query = useQuery({

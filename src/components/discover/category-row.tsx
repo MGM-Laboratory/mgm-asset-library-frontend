@@ -5,6 +5,7 @@ import NextLink from 'next/link';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { AssetCard } from '@/components/asset/asset-card';
+import { useSavedIds } from '@/lib/hooks/use-saved-ids';
 import type { AssetSummary } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +13,6 @@ interface CategoryRowProps {
   categoryName: string;
   categoryId: string;
   assets: AssetSummary[];
-  savedIds: Set<string>;
   ownAssetIds: Set<string>;
 }
 
@@ -20,10 +20,10 @@ export function CategoryRow({
   categoryName,
   categoryId,
   assets,
-  savedIds,
   ownAssetIds,
 }: CategoryRowProps) {
   const t = useTranslations('discover');
+  const savedIds = useSavedIds();
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(true);
