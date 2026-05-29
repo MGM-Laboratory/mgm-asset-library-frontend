@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toaster';
 import { useAuthedFetch } from '@/lib/api/client';
-import { queryKeys } from '@/lib/api/queries';
+import { queryKeys, STALE_TIMES } from '@/lib/api/queries';
 import { useIntersection } from '@/lib/hooks/use-intersection';
 import { useLibraryView } from '@/lib/stores/library-view';
 import { logEvent } from '@/lib/logger.events';
@@ -61,7 +61,7 @@ export function LibraryGrid() {
         query: { ...filters, limit: 24, cursor: pageParam, locale },
       }),
     getNextPageParam: (last) => (last.pageInfo.hasMore ? (last.pageInfo.nextCursor ?? undefined) : undefined),
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.library,
   });
 
   const { ref: sentinelRef, isIntersecting } = useIntersection<HTMLDivElement>({ rootMargin: '320px' });

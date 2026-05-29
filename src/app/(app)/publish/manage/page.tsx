@@ -102,7 +102,7 @@ function ManageRow({
   return (
     <article className="grid grid-cols-[140px_1fr_auto] gap-5 items-center p-3 rounded-[16px] border border-line bg-surface">
       <div className="aspect-[16/9] w-[140px] rounded-[10px] overflow-hidden border border-line bg-surface-muted">
-        <ThumbnailImage src={asset.thumbnailUrl} alt={asset.title} className="!rounded-[10px]" />
+        <ThumbnailImage src={asset.thumbnailUrl} alt={asset.title} className="!rounded-[10px]" unoptimized />
       </div>
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-1">

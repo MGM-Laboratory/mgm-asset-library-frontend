@@ -10,7 +10,7 @@ import type { Category, DiscoverResponse, LocaleCode } from '@/lib/api/types';
 import { logger } from '@/lib/logger';
 
 export const metadata = { title: 'Discover' };
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 async function safeFetch<T>(path: string, accessToken: string | undefined, locale: LocaleCode): Promise<T | null> {
   try {

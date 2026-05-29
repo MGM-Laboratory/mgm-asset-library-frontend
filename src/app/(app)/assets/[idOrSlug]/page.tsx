@@ -10,6 +10,8 @@ interface PageProps {
   params: Promise<{ idOrSlug: string }>;
 }
 
+export const revalidate = 60;
+
 export async function generateMetadata({ params }: PageProps) {
   const { idOrSlug } = await params;
   return { title: `${idOrSlug.replace(/-/g, ' ')}` };

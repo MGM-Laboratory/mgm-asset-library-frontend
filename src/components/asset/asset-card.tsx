@@ -82,6 +82,7 @@ function GridCard({
           fallback={fallbackThumbnail}
           alt={asset.title}
           priority={priority}
+          unoptimized
         />
         {!isOwner ? (
           <SaveButton assetId={asset.id} initialSaved={isSaved} />
@@ -166,6 +167,7 @@ function CompactCard({
           alt={asset.title}
           priority={priority}
           className="rounded-[16px] rounded-b-none"
+          unoptimized
         />
         {!isOwner ? (
           <SaveButton assetId={asset.id} initialSaved={isSaved} className="top-1.5 right-1.5 h-8 w-8" />
@@ -221,6 +223,7 @@ function FeatureCard({
           alt={asset.title}
           priority={priority}
           className="!rounded-[28px] !after:hidden"
+          unoptimized
         />
       </div>
       {/* Gradient overlay — DS-safe legibility */}
@@ -298,6 +301,7 @@ function RowCard({
           fallback={fallbackThumbnail}
           alt={asset.title}
           className="rounded-[12px]"
+          unoptimized
         />
       </div>
       <div className="min-w-0">

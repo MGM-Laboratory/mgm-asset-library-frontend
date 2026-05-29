@@ -14,6 +14,14 @@ interface ThumbnailImageProps {
   priority?: boolean;
   className?: string;
   sizes?: string;
+  /**
+   * Skip the next/image optimizer and render a plain <img>. Use for grid
+   * thumbnails: the backend already serves pre-resized thumbs, and presigned
+   * S3 URLs carry a fresh query string every load so the optimizer cache never
+   * hits — routing them through /_next/image just adds a server round-trip per
+   * card. Keep the optimizer (default) for full-res / lightbox imagery.
+   */
+  unoptimized?: boolean;
 }
 
 /**
@@ -32,6 +40,7 @@ export function ThumbnailImage({
   priority = false,
   className,
   sizes = '(min-width: 1280px) 320px, (min-width: 768px) 50vw, 100vw',
+  unoptimized = false,
 }: ThumbnailImageProps) {
   const url = src || fallback || null;
   const [loaded, setLoaded] = useState(false);
@@ -58,14 +67,18 @@ export function ThumbnailImage({
         <div className="absolute inset-0 skeleton" aria-hidden />
       ) : null}
       {url && !errored ? (
-        // next/image refuses blob: / data: URLs (no remote-pattern match) — fall
-        // back to a plain <img> for local-preview thumbnails uploaded by the
-        // publish wizard so the preview renders the moment the file is picked.
-        url.startsWith('blob:') || url.startsWith('data:') ? (
+        // Plain <img> when:
+        //  - blob: / data: URLs (next/image refuses them — local publish-wizard
+        //    previews that must render the moment the file is picked), or
+        //  - unoptimized grid thumbnails (pre-resized, presigned: the optimizer
+        //    adds a server round-trip with ~0% cache hit).
+        url.startsWith('blob:') || url.startsWith('data:') || unoptimized ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={url}
             alt={alt}
+            loading={priority ? 'eager' : 'lazy'}
+            decoding="async"
             className={cn(
               'absolute inset-0 h-full w-full object-cover transition-opacity duration-200',
               loaded ? 'opacity-100' : 'opacity-0',

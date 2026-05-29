@@ -2,15 +2,12 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuthedFetch } from '@/lib/api/client';
-import { queryKeys } from '@/lib/api/queries';
+import { queryKeys, STALE_TIMES } from '@/lib/api/queries';
 import type { LibraryPage } from '@/lib/api/types';
 
 // Stable empty reference so consumers don't see a new Set identity each render
 // while the query is loading.
 const EMPTY_SAVED_IDS = new Set<string>();
-
-// TODO: switch to STALE_TIMES.LIBRARY once perf/p0-tanstack-defaults lands.
-const SAVED_IDS_STALE_MS = 120_000;
 
 /**
  * Single client-side source of the current user's saved-asset IDs, used to
@@ -30,7 +27,7 @@ export function useSavedIds(): Set<string> {
       const page = await fetcher<LibraryPage>('/library', { query: { limit: 100 } });
       return new Set(page.items.map((i) => i.asset.id));
     },
-    staleTime: SAVED_IDS_STALE_MS,
+    staleTime: STALE_TIMES.library,
   });
   return data ?? EMPTY_SAVED_IDS;
 }

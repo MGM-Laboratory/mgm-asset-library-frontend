@@ -4,7 +4,7 @@ import { SearchResults } from '@/components/search/search-results';
 import { requireSession } from '@/lib/auth/server';
 
 export const metadata = { title: 'Search' };
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function SearchPage() {
   await requireSession();

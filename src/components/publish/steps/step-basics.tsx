@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription } from '@/components/ui/modal';
 import { Alert } from '@/components/ui/alert';
 import { useAuthedFetch } from '@/lib/api/client';
-import { queryKeys } from '@/lib/api/queries';
+import { queryKeys, STALE_TIMES } from '@/lib/api/queries';
 import { useWizard } from '../wizard-context';
 import type { Category, Engine, LicenseSummary, LocaleCode } from '@/lib/api/types';
 
@@ -45,12 +45,12 @@ export function StepBasics() {
   const categories = useQuery({
     queryKey: queryKeys.categories(locale),
     queryFn: () => fetcher<Category[]>('/categories', { query: { locale } }),
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIMES.categories,
   });
   const licenses = useQuery({
     queryKey: queryKeys.licenses(locale),
     queryFn: () => fetcher<LicenseSummary[]>('/licenses', { query: { locale } }),
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIMES.licenses,
   });
 
   const [licensePreviewOpen, setLicensePreviewOpen] = useState(false);
