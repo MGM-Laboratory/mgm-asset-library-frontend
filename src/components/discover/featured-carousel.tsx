@@ -102,6 +102,7 @@ export function FeaturedCarousel({ slots, className }: FeaturedCarouselProps) {
             priority
             className="!rounded-[28px]"
             sizes="(min-width: 1280px) 1280px, 100vw"
+            unoptimized
           />
         </div>
         <div
