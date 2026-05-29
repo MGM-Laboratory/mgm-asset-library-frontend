@@ -100,6 +100,7 @@ function GridCard({
         <h3 className="font-display text-h3 text-ink tracking-[-0.005em] line-clamp-1 leading-tight">
           <NextLink
             href={href ?? assetHref(asset)}
+            prefetch={true}
             className="focus-visible:outline-none after:absolute after:inset-0 after:rounded-[20px]"
           >
             {asset.title}
@@ -177,6 +178,7 @@ function CompactCard({
         <h4 className="text-[14px] font-semibold text-ink tracking-[-0.005em] line-clamp-1 leading-tight">
           <NextLink
             href={href ?? assetHref(asset)}
+            prefetch={true}
             className="focus-visible:outline-none after:absolute after:inset-0 after:rounded-[16px]"
           >
             {asset.title}
@@ -242,6 +244,7 @@ function FeatureCard({
         <h2 className="display-lg !text-white leading-[1.05]">
           <NextLink
             href={href ?? assetHref(asset)}
+            prefetch={true}
             className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0e1116] after:absolute after:inset-0 after:rounded-[28px]"
           >
             {asset.title}
@@ -312,6 +315,7 @@ function RowCard({
         <h3 className="font-display text-[18px] font-semibold text-ink tracking-[-0.005em] line-clamp-1">
           <NextLink
             href={href ?? assetHref(asset)}
+            prefetch={true}
             className="focus-visible:outline-none after:absolute after:inset-0 after:rounded-[16px]"
           >
             {asset.title}
