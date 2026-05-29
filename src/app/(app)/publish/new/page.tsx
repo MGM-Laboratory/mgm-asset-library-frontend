@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { useAuthedFetch } from '@/lib/api/client';
-import { queryKeys } from '@/lib/api/queries';
+import { queryKeys, STALE_TIMES } from '@/lib/api/queries';
 import type { Category, LicenseSummary, LocaleCode } from '@/lib/api/types';
 
 const Schema = z.object({
@@ -36,12 +36,12 @@ export default function NewDraftPage() {
   const categories = useQuery({
     queryKey: queryKeys.categories(locale),
     queryFn: () => fetcher<Category[]>('/categories', { query: { locale } }),
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIMES.categories,
   });
   const licenses = useQuery({
     queryKey: queryKeys.licenses(locale),
     queryFn: () => fetcher<LicenseSummary[]>('/licenses', { query: { locale } }),
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIMES.licenses,
   });
 
   const form = useForm<FormValues>({

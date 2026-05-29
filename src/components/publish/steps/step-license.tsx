@@ -7,7 +7,7 @@ import { Field } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Modal, ModalContent, ModalHeader, ModalTitle } from '@/components/ui/modal';
 import { useAuthedFetch } from '@/lib/api/client';
-import { queryKeys } from '@/lib/api/queries';
+import { queryKeys, STALE_TIMES } from '@/lib/api/queries';
 import { useWizard } from '../wizard-context';
 import type { LicenseSummary, LocaleCode } from '@/lib/api/types';
 
@@ -22,7 +22,7 @@ export function StepLicense() {
   const licenses = useQuery({
     queryKey: queryKeys.licenses(locale),
     queryFn: () => fetcher<LicenseSummary[]>('/licenses', { query: { locale } }),
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIMES.licenses,
   });
   const license = licenses.data?.find((l) => l.id === wiz.asset.license?.id);
 
