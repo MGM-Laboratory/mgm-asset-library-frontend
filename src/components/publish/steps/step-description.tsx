@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Field, Textarea } from '@/components/ui/input';
-import { RichTextEditor } from '@/components/rich-text/rich-text-editor';
+import { RichTextEditor } from '@/components/rich-text/rich-text-editor.lazy';
 import { Alert } from '@/components/ui/alert';
 import { useWizard } from '../wizard-context';
 import { cn } from '@/lib/utils';

@@ -12,7 +12,8 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import { TipTapRenderer } from '@/components/rich-text/tiptap-renderer';
-import { RichTextEditor, stripDisallowedLiteNodes } from '@/components/rich-text/rich-text-editor';
+import { RichTextEditor } from '@/components/rich-text/rich-text-editor.lazy';
+import { stripDisallowedLiteNodes } from '@/components/rich-text/lite-nodes';
 import { Button } from '@/components/ui/button';
 import { CommentComposer } from './comment-composer';
 import { avatarFromServer } from '@/lib/avatar';

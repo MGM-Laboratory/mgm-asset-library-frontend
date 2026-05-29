@@ -3,7 +3,9 @@ import { ArrowRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { AdminPageHeader } from '@/components/admin/admin-page-header';
 import { StatCard } from '@/components/admin/stat-card';
-import { DashboardCharts } from '@/components/admin/dashboard-charts';
+// Recharts is lazy-loaded (client-only) via this wrapper so it never ships in
+// shared chunks. SSR-off is fine: the page is `force-dynamic` and admin-gated.
+import { DashboardCharts } from '@/components/admin/dashboard-charts.lazy';
 import { DataTable } from '@/components/admin/data-table';
 import { Avatar } from '@/components/ui/avatar';
 import { avatarFromServer } from '@/lib/avatar';
